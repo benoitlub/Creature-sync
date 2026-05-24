@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type AnalysisState, UI_LABELS, type Lang } from "../data/translations";
+import { type AnalysisState, UI_LABELS, type Lang } from "../data/animals";
 
 export function TranslationCard({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
