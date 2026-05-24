@@ -205,7 +205,7 @@ export function SignalQualityPanel({ state, scanProgress, lang }: { state: Analy
         />
         <div className="flex justify-between text-[8px] font-mono text-gray-600 tracking-wider">
           <span>{t.freq}: {state.isListening ? "2.4–18 kHz" : "---"}</span>
-          <span>{t.codec}: ORNITH-X/v3</span>
+          <span>{t.codec}: CREATURE-SYNC/v3</span>
         </div>
       </div>
     </Panel>
