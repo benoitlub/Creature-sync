@@ -63,7 +63,7 @@ export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang
       {ready && state.species ? (
         <div className="space-y-1">
           <div className="text-base font-mono font-bold text-white tracking-wider">{state.species.name}</div>
-          <div className="text-[10px] font-mono text-cyan-400/70 italic">{state.species.scientificName}</div>
+          <div className="text-[10px] font-mono text-cyan-400/70 italic">{state.species.scientificName[lang]}</div>
           <div className="flex flex-wrap gap-1 mt-2">
             {state.species.personality[lang].map(p => (
               <span key={p} className="text-[8px] font-mono px-1.5 py-0.5 rounded border border-cyan-400/20 text-cyan-300/70 tracking-wider">{p}</span>
