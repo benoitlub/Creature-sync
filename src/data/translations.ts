@@ -172,7 +172,11 @@ export const SPECIES: Species[] = [
   {
     id: "crow",
     name: "CORVUS CORAX",
-    scientificName: "Common Crow",
+    scientificName: {
+      en: ["Common Crow",],
+      fr: ["Corbeau commun",],
+      es: ["cuervo común",],
+      },
     emoji: "🐦‍⬛",
     personality: {
       en: ["CYNICAL", "PHILOSOPHICAL", "SUSPICIOUS", "INTELLIGENT"],
@@ -263,7 +267,11 @@ export const SPECIES: Species[] = [
   {
     id: "pigeon",
     name: "COLUMBA LIVIA",
-    scientificName: "Urban Pigeon",
+    scientificName: {
+      en: ["Urban Pigeon",],
+      fr: ["Pigeon Urbain",],
+      es: ["paloma urbana",],
+      },"",
     emoji: "🕊️",
     personality: {
       en: ["CHAOTIC", "FOOD-OBSESSED", "OVERCONFIDENT", "RESILIENT"],
