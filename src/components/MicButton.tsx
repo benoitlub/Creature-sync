@@ -1,4 +1,4 @@
-import { UI_LABELS, type Lang } from "../data/translations";
+import { UI_LABELS, type Lang } from "../data/animals";
 
 type Props = {
   isListening: boolean;
