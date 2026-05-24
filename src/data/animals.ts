@@ -1,8 +1,18 @@
-import type { Lang } from "./animals";
+import type { Lang, AnalysisState, AudioFeatures } from "./translations";
 import { ANIMAL_TEXTS } from "./animalTexts";
 
-export type AnimalId = "crow" | "pigeon" | "duck" | "cat" | "dog" | "owl";
+export {
+  UI_LABELS,
+  getThreatColor,
+  getCrypticMessages,
+  getRandomTranslation,
+  extractAudioFeatures,
+  classifySpecies,
+  getWeightedSpecies,
+} from "./translations";
 
+export type { AnalysisState, AudioFeatures };
+export type AnimalId = "crow" | "pigeon" | "duck" | "cat" | "dog" | "owl";
 export type Animal = {
   id: AnimalId;
   name: string;
