@@ -2,8 +2,8 @@ export type Lang = "en" | "fr" | "es";
 
 export const UI_LABELS: Record<Lang, Record<string, string>> = {
   en: {
-    title: "CRÉATURE-SYNC",
-    subtitle: "// ORNITH-X ANIMAL TRANSLATION PROTOCOL",
+    title: "CREATURE-SYNC",
+    subtitle: "// CREATURE-SYNC ANIMAL TRANSLATION PROTOCOL",
     initiate: "INITIATE SCAN",
     stop: "STOP SCAN",
     analyzing: "ANALYZING...",
@@ -35,7 +35,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
     bioacoustic: "BIOACOUSTIC PATTERN RECOGNITION",
     freq: "FREQ",
     codec: "CODEC",
-    footer1: "ORNITH-X v3.7.2 // FEUCH INSTITUTE PROPRIETARY",
+    footer1: "CREATURE-SYNC v3.7.2 // FEUCH INSTITUTE PROPRIETARY",
     footer2: "CLASSIFICATION: LEVEL-4",
     footer3: "BLACKLACE ISLAND",
     institute: "FEUCH INSTITUTE",
@@ -47,7 +47,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
   },
   fr: {
     title: "CRÉATURE-SYNC",
-    subtitle: "// PROTOCOLE ORNITH-X DE TRADUCTION ANIMALE",
+    subtitle: "// PROTOCOLE CREATURE-SYNC DE TRADUCTION ANIMALE",
     initiate: "LANCER L'ÉCOUTE",
     stop: "ARRÊTER L'ÉCOUTE",
     analyzing: "ANALYSE EN COURS...",
@@ -79,19 +79,19 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
     bioacoustic: "RECONNAISSANCE BIOACOUSTIQUE",
     freq: "FRÉQ",
     codec: "CODEC",
-    footer1: "ORNITH-X v3.7.2 // INSTITUT FEUCH — PROPRIÉTAIRE",
+    footer1: "CREATURE-SYNC v3.7.2 // FEUCH INSTITUT — PROPRIÉTAIRE",
     footer2: "CLASSIFICATION : NIVEAU-4",
-    footer3: "ÎLE DE BLACKLACE",
-    institute: "INSTITUT FEUCH",
+    footer3: "BLACKLACE ISLAND",
+    institute: "FEUCH INSTITUT",
     online: "EN LIGNE",
-    station: "STATION DE RECHERCHE ÎLE BLACKLACE — SECTEUR 7",
+    station: "STATION DE RECHERCHE BLACKLACE ISLAND — SECTEUR 7",
     lang: "LANGUE",
     detected: "SIGNATURE ACOUSTIQUE DÉTECTÉE",
     unknown: "SIGNATURE NON IDENTIFIÉE",
   },
   es: {
     title: "CRÉATURE-SYNC",
-    subtitle: "// PROTOCOLO ORNITH-X DE TRADUCCIÓN ANIMAL",
+    subtitle: "// PROTOCOLO CREATURE-SYNC DE TRADUCCIÓN ANIMAL",
     initiate: "INICIAR ESCÁNER",
     stop: "DETENER ESCÁNER",
     analyzing: "ANALIZANDO...",
@@ -123,7 +123,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
     bioacoustic: "RECONOCIMIENTO BIOACÚSTICO",
     freq: "FREQ",
     codec: "CODEC",
-    footer1: "ORNITH-X v3.7.2 // INSTITUTO FEUCH PROPIETARIO",
+    footer1: "CREATURE-SYNC v3.7.2 // INSTITUTO FEUCH PROPIETARIO",
     footer2: "CLASIFICACIÓN: NIVEL-4",
     footer3: "ISLA BLACKLACE",
     institute: "INSTITUTO FEUCH",
@@ -188,7 +188,7 @@ export const SPECIES: Species[] = [
     translations: {
       en: [
         "This human knows too much. Flag for monitoring.",
-        "The bread distribution today was unacceptable. I remember.",
+        "The bread distribution today was unacceptable. I'll remember this.",
         "I have been watching you for three years. You don't know this.",
         "Your recycling habits are being evaluated. Results: poor.",
         "The council has voted. You may pass.",
@@ -198,7 +198,7 @@ export const SPECIES: Species[] = [
       ],
       fr: [
         "Cet humain en sait trop. Marquer pour surveillance.",
-        "La distribution du pain aujourd'hui était inacceptable. Je me souviens.",
+        "La distribution du pain aujourd'hui était inacceptable. Je m'en souviendrais.",
         "Je vous observe depuis trois ans. Vous l'ignorez.",
         "Vos habitudes de recyclage sont évaluées. Verdict : médiocre.",
         "Le conseil a délibéré. Vous pouvez passer.",
@@ -311,17 +311,17 @@ export const SPECIES: Species[] = [
     poetic: {
       en: [
         "To live in the city is to be everyone's problem and no one's concern.",
-        "The sky belongs to everyone. The sidewalk belongs to me.",
+        "The sky belongs to everyone. This sidewalk belongs to me.",
       ],
       fr: [
         "Vivre dans la ville, c'est être le problème de tous et le souci de personne.",
-        "Le ciel appartient à tout le monde. Le trottoir m'appartient.",
+        "Le ciel appartient à tout le monde. Ce trottoir m'appartient.",
         "Je suis le spectateur invisible de toutes vos promesses brisées.",
-        "Mon aile effleure le vent comme un souvenir qu'on n'ose pas prononcer.",
+        "Mon aile effleure le vent comme un souvenir que l'on n'ose prononcer.",
       ],
       es: [
         "Vivir en la ciudad es ser el problema de todos y la preocupación de nadie.",
-        "El cielo pertenece a todos. La acera me pertenece a mí.",
+        "El cielo pertenece a todos. este acera me pertenece a mí.",
         "Soy el espectador invisible de todas tus promesas rotas.",
         "Mi ala acaricia el viento como un recuerdo que no te atreves a pronunciar.",
       ],
@@ -351,7 +351,11 @@ export const SPECIES: Species[] = [
   {
     id: "duck",
     name: "ANAS PLATYRHYNCHOS",
-    scientificName: "Mallard Duck",
+    scientificName: {
+      en: ["Mallard Duck",],
+      fr: ["Canard",],
+      es: ["Pato",],
+      },
     emoji: "🦆",
     personality: {
       en: ["CALM", "EXISTENTIAL", "WATER-OBSESSED", "QUIETLY UNSTABLE"],
@@ -439,7 +443,11 @@ export const SPECIES: Species[] = [
   {
     id: "cat",
     name: "FELIS CATUS",
-    scientificName: "Domestic Cat",
+    scientificName: {
+      en: ["Domestic Cat",],
+      fr: ["Chat domestique",],
+      es: ["Gato domestico",],
+      }, 
     emoji: "🐱",
     personality: {
       en: ["NARCISSISTIC", "DOMINANT", "PASSIVE-AGGRESSIVE", "REGAL"],
@@ -527,7 +535,11 @@ export const SPECIES: Species[] = [
   {
     id: "dog",
     name: "CANIS LUPUS FAMILIARIS",
-    scientificName: "Domestic Dog",
+     scientificName: {
+      en: ["Domestic Dog",],
+      fr: ["Chien domestique",],
+      es: ["Perro domestico",],
+      },
     emoji: "🐕",
     personality: {
       en: ["OVEREXCITED", "LOYAL", "EMOTIONAL", "PROTECTIVE"],
@@ -615,7 +627,11 @@ export const SPECIES: Species[] = [
   {
     id: "owl",
     name: "STRIX ALUCO",
-    scientificName: "Tawny Owl",
+    scientificName: {
+      en: ["Tawny Owl",],
+      fr: ["Chouette hulotte",],
+      es: ["Búho leonado",],
+      },
     emoji: "🦉",
     personality: {
       en: ["ANCIENT", "CRYPTIC", "ALL-SEEING", "SILENT"],
