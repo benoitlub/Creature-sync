@@ -9,7 +9,6 @@ const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: "/Creature-sync/",
-  base: basePath,
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
