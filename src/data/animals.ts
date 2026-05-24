@@ -1,4 +1,4 @@
-import type { Lang } from "./translations";
+import type { Lang } from "./animals";
 import { ANIMAL_TEXTS } from "./animalTexts";
 
 export type AnimalId = "crow" | "pigeon" | "duck" | "cat" | "dog" | "owl";
