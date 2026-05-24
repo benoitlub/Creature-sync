@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { UI_LABELS, type Lang } from "../data/translations";
 
 type Props = {
   isListening: boolean;
@@ -7,16 +7,18 @@ type Props = {
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
+  lang: Lang;
 };
 
-export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onStop, onReset }: Props) {
+export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onStop, onReset, lang }: Props) {
+  const t = UI_LABELS[lang];
   const label = isAnalyzing
-    ? "ANALYZING..."
+    ? t.analyzing
     : isComplete
-    ? "SCAN COMPLETE — RESET"
+    ? t.complete
     : isListening
-    ? "STOP SCAN"
-    : "INITIATE SCAN";
+    ? t.stop
+    : t.initiate;
 
   const handleClick = () => {
     if (isComplete) onReset();

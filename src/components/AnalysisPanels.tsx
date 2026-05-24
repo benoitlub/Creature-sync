@@ -1,4 +1,4 @@
-import { type AnalysisState, getThreatColor } from "../data/translations";
+import { type AnalysisState, type Lang, UI_LABELS, getThreatColor } from "../data/translations";
 
 type PanelProps = { className?: string; children: React.ReactNode; label: string; accent?: string };
 
@@ -55,54 +55,57 @@ function Placeholder({ text = "AWAITING SIGNAL" }: { text?: string }) {
   );
 }
 
-export function SpeciesPanel({ state }: { state: AnalysisState }) {
+export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete && state.species;
   return (
-    <Panel label="SPECIES IDENTIFICATION" accent="#00d4ff">
+    <Panel label={t.species} accent="#00d4ff">
       {ready && state.species ? (
         <div className="space-y-1">
           <div className="text-base font-mono font-bold text-white tracking-wider">{state.species.name}</div>
           <div className="text-[10px] font-mono text-cyan-400/70 italic">{state.species.scientificName}</div>
           <div className="flex flex-wrap gap-1 mt-2">
-            {state.species.personality.map(p => (
+            {state.species.personality[lang].map(p => (
               <span key={p} className="text-[8px] font-mono px-1.5 py-0.5 rounded border border-cyan-400/20 text-cyan-300/70 tracking-wider">{p}</span>
             ))}
           </div>
           <div className="mt-2">
-            <Bar value={state.confidence} color="#00d4ff" label="CONFIDENCE" sublabel={`${state.confidence}%`} />
+            <Bar value={state.confidence} color="#00d4ff" label={t.confidence} sublabel={`${state.confidence}%`} />
           </div>
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "SCANNING..." : "NO SIGNAL"} />
+        <Placeholder text={state.isAnalyzing ? t.scanning : t.noSignal} />
       )}
     </Panel>
   );
 }
 
-export function EmotionalPanel({ state }: { state: AnalysisState }) {
+export function EmotionalPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete;
   return (
-    <Panel label="EMOTIONAL FREQUENCY" accent="#ff8c00">
+    <Panel label={t.emotional} accent="#ff8c00">
       {ready ? (
         <div className="space-y-2">
           <div className="text-[11px] font-mono text-orange-400 tracking-wider">{state.emotionalState}</div>
-          <Bar value={state.neuralResonance} color="#ff8c00" label="NEURAL RESONANCE" sublabel={`${state.neuralResonance}%`} />
-          <Bar value={state.signalQuality} color="#ffcc00" label="SIGNAL CLARITY" sublabel={`${state.signalQuality}%`} />
+          <Bar value={state.neuralResonance} color="#ff8c00" label={t.resonance} sublabel={`${state.neuralResonance}%`} />
+          <Bar value={state.signalQuality} color="#ffcc00" label={t.clarity} sublabel={`${state.signalQuality}%`} />
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "CALIBRATING..." : "OFFLINE"} />
+        <Placeholder text={state.isAnalyzing ? t.calibrating : t.offline} />
       )}
     </Panel>
   );
 }
 
-export function ThreatPanel({ state }: { state: AnalysisState }) {
+export function ThreatPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete;
   const color = getThreatColor(state.threatLevel);
-  const levels = ["MINIMAL", "LOW", "MODERATE", "ELEVATED", "CRITICAL"] as const;
+  const levels: AnalysisState["threatLevel"][] = ["MINIMAL", "LOW", "MODERATE", "ELEVATED", "CRITICAL"];
   const idx = levels.indexOf(state.threatLevel);
   return (
-    <Panel label="THREAT ASSESSMENT" accent="#ff4444">
+    <Panel label={t.threat} accent="#ff4444">
       {ready ? (
         <div className="space-y-2">
           <div
@@ -125,31 +128,33 @@ export function ThreatPanel({ state }: { state: AnalysisState }) {
           </div>
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "ASSESSING..." : "OFFLINE"} />
+        <Placeholder text={state.isAnalyzing ? t.assessing : t.offline} />
       )}
     </Panel>
   );
 }
 
-export function BiologicalPanel({ state }: { state: AnalysisState }) {
+export function BiologicalPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete;
   return (
-    <Panel label="BIOLOGICAL INTENT" accent="#00ff88">
+    <Panel label={t.biological} accent="#00ff88">
       {ready ? (
         <div className="text-[11px] font-mono text-green-400 tracking-wider leading-relaxed">
           {state.biologicalIntent}
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "DECODING..." : "OFFLINE"} />
+        <Placeholder text={state.isAnalyzing ? t.decoding2 : t.offline} />
       )}
     </Panel>
   );
 }
 
-export function NeuralPanel({ state }: { state: AnalysisState }) {
+export function NeuralPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete && state.species;
   return (
-    <Panel label="NEURAL RESONANCE" accent="#9b59ff">
+    <Panel label={t.neural} accent="#9b59ff">
       {ready && state.species ? (
         <div className="space-y-1.5">
           {state.species.neuralPatterns.map(p => (
@@ -160,19 +165,20 @@ export function NeuralPanel({ state }: { state: AnalysisState }) {
           ))}
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "RESONATING..." : "OFFLINE"} />
+        <Placeholder text={state.isAnalyzing ? t.resonating : t.offline} />
       )}
     </Panel>
   );
 }
 
-export function EnvironmentPanel({ state }: { state: AnalysisState }) {
+export function EnvironmentPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const ready = state.isComplete && state.species;
   return (
-    <Panel label="ENVIRONMENTAL SCAN" accent="#ffcc00">
+    <Panel label={t.environment} accent="#ffcc00">
       {ready && state.species ? (
         <div className="space-y-1.5">
-          {state.species.environmentalScans.map(s => (
+          {state.species.environmentalScans[lang].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className="w-1 h-1 rounded-full bg-yellow-400" style={{ boxShadow: "0 0 4px #ffcc00" }} />
               <span className="text-[9px] font-mono text-yellow-300/80 tracking-wider">{s}</span>
@@ -180,25 +186,26 @@ export function EnvironmentPanel({ state }: { state: AnalysisState }) {
           ))}
         </div>
       ) : (
-        <Placeholder text={state.isAnalyzing ? "SCANNING ENVIRONMENT..." : "OFFLINE"} />
+        <Placeholder text={state.isAnalyzing ? t.envScan : t.offline} />
       )}
     </Panel>
   );
 }
 
-export function SignalQualityPanel({ state, scanProgress }: { state: AnalysisState; scanProgress: number }) {
+export function SignalQualityPanel({ state, scanProgress, lang }: { state: AnalysisState; scanProgress: number; lang: Lang }) {
+  const t = UI_LABELS[lang];
   return (
-    <Panel label="AUDIO SIGNAL QUALITY" accent="#00d4ff">
+    <Panel label={t.signal} accent="#00d4ff">
       <div className="space-y-2">
         <Bar
           value={state.isComplete ? state.signalQuality : state.isAnalyzing ? scanProgress : 0}
           color="#00d4ff"
-          label="SIGNAL STRENGTH"
+          label={t.strength}
           sublabel={state.isComplete ? `${state.signalQuality}%` : state.isAnalyzing ? `${Math.floor(scanProgress)}%` : "0%"}
         />
         <div className="flex justify-between text-[8px] font-mono text-gray-600 tracking-wider">
-          <span>FREQ: {state.isListening ? "2.4–18 kHz" : "---"}</span>
-          <span>CODEC: ORNITH-X/v3</span>
+          <span>{t.freq}: {state.isListening ? "2.4–18 kHz" : "---"}</span>
+          <span>{t.codec}: ORNITH-X/v3</span>
         </div>
       </div>
     </Panel>
