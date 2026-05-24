@@ -3,7 +3,7 @@ export type Lang = "en" | "fr" | "es";
 export const UI_LABELS: Record<Lang, Record<string, string>> = {
   en: {
     title: "CREATURE-SYNC",
-    subtitle: "// CREATURE-SYNC ANIMAL TRANSLATION PROTOCOL",
+    subtitle: "// ANIMAL TRANSLATION PROTOCOL",
     initiate: "INITIATE SCAN",
     stop: "STOP SCAN",
     analyzing: "ANALYZING...",
@@ -47,7 +47,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
   },
   fr: {
     title: "CREATURE-SYNC",
-    subtitle: "// PROTOCOLE CREATURE-SYNC DE TRADUCTION ANIMALE",
+    subtitle: "// PROTOCOLE DE TRADUCTION ANIMALE",
     initiate: "LANCER L'ÉCOUTE",
     stop: "ARRÊTER L'ÉCOUTE",
     analyzing: "ANALYSE EN COURS...",
@@ -91,7 +91,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
   },
   es: {
     title: "CREATURE-SYNC",
-    subtitle: "// PROTOCOLO CREATURE-SYNC DE TRADUCCIÓN ANIMAL",
+    subtitle: "// PROTOCOLO DE TRADUCCIÓN ANIMAL",
     initiate: "INICIAR ESCÁNER",
     stop: "DETENER ESCÁNER",
     analyzing: "ANALIZANDO...",
