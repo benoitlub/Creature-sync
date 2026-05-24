@@ -10,7 +10,7 @@ import {
   type Lang,
   type AudioFeatures,
   type Species,
-} from "../data/translations";
+} from "../data/animals";
 
 const INITIAL_STATE: AnalysisState = {
   isListening: false,
