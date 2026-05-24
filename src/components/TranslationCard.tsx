@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { type AnalysisState } from "../data/translations";
+import { type AnalysisState, UI_LABELS, type Lang } from "../data/translations";
 
-export function TranslationCard({ state }: { state: AnalysisState }) {
+export function TranslationCard({ state, lang }: { state: AnalysisState; lang: Lang }) {
+  const t = UI_LABELS[lang];
   const [displayed, setDisplayed] = useState("");
   const [cursor, setCursor] = useState(true);
 
@@ -29,7 +30,7 @@ export function TranslationCard({ state }: { state: AnalysisState }) {
   }, []);
 
   const accentColor = state.isPoetic ? "#9b59ff" : "#00d4ff";
-  const labelText = state.isPoetic ? "NEURAL POETRY DETECTED" : "TRANSLATION PROTOCOL";
+  const labelText = state.isPoetic ? t.poetry : t.translation;
 
   return (
     <div
@@ -64,7 +65,7 @@ export function TranslationCard({ state }: { state: AnalysisState }) {
         />
         {labelText}
         {state.isPoetic && state.isComplete && (
-          <span className="ml-auto text-[8px] tracking-wider text-purple-400/70">— RARE EVENT —</span>
+          <span className="ml-auto text-[8px] tracking-wider text-purple-400/70">{t.rare}</span>
         )}
       </div>
 
@@ -84,7 +85,7 @@ export function TranslationCard({ state }: { state: AnalysisState }) {
               />
             ))}
           </div>
-          <span className="text-[10px] font-mono text-orange-400/70 tracking-wider">DECODING VOCALISATION...</span>
+          <span className="text-[10px] font-mono text-orange-400/70 tracking-wider">{t.decoding}</span>
         </div>
       )}
 
@@ -98,20 +99,20 @@ export function TranslationCard({ state }: { state: AnalysisState }) {
             letterSpacing: state.isPoetic ? "0.02em" : "0.01em",
           }}
         >
-          {state.isPoetic && <span className="text-purple-400/60 mr-1">"</span>}
+          {state.isPoetic && <span className="text-purple-400/60 mr-1">&ldquo;</span>}
           {displayed}
           {cursor && displayed.length < state.translation.length && (
             <span style={{ color: accentColor }}>█</span>
           )}
           {state.isPoetic && displayed.length === state.translation.length && (
-            <span className="text-purple-400/60 ml-1">"</span>
+            <span className="text-purple-400/60 ml-1">&rdquo;</span>
           )}
         </div>
       )}
 
       {!state.isComplete && !state.isAnalyzing && (
         <div className="text-[10px] font-mono text-gray-600 tracking-widest pt-2">
-          AWAITING AUDIO INPUT — PRESS INITIATE SCAN
+          {t.awaiting}
         </div>
       )}
 
@@ -123,10 +124,10 @@ export function TranslationCard({ state }: { state: AnalysisState }) {
             </span>
           )}
           <span className="text-[8px] font-mono text-gray-600 tracking-wider">
-            CONF: {state.confidence}%
+            {t.confidence}: {state.confidence}%
           </span>
           <span className="text-[8px] font-mono text-gray-600 tracking-wider ml-auto">
-            FEUCH INSTITUTE // BLACKLACE-7
+            {t.institute} // BLACKLACE-7
           </span>
         </div>
       )}

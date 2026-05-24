@@ -5,6 +5,7 @@ import { Waveform } from "../components/Waveform";
 import { Spectrogram } from "../components/Spectrogram";
 import { MicButton } from "../components/MicButton";
 import { TranslationCard } from "../components/TranslationCard";
+import { UI_LABELS, type Lang } from "../data/translations";
 import {
   SpeciesPanel,
   EmotionalPanel,
@@ -84,9 +85,38 @@ function CrypticTicker({ message }: { message: string }) {
   );
 }
 
-function Header({ glitch }: { glitch: boolean }) {
+function LangSelector({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
+  const opts: { v: Lang; l: string }[] = [
+    { v: "fr", l: "FR" },
+    { v: "en", l: "EN" },
+    { v: "es", l: "ES" },
+  ];
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[8px] font-mono text-gray-500 tracking-widest">{UI_LABELS[lang].lang}</span>
+      {opts.map(o => (
+        <button
+          key={o.v}
+          onClick={() => onChange(o.v)}
+          className="text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all duration-200"
+          style={{
+            borderColor: lang === o.v ? "#00d4ff55" : "#ffffff11",
+            color: lang === o.v ? "#00d4ff" : "#ffffff44",
+            background: lang === o.v ? "rgba(0,212,255,0.08)" : "transparent",
+            boxShadow: lang === o.v ? "0 0 6px #00d4ff22" : "none",
+          }}
+        >
+          {o.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; onLangChange: (l: Lang) => void }) {
   const [time, setTime] = useState("");
   const [blink, setBlink] = useState(true);
+  const t = UI_LABELS[lang];
 
   useEffect(() => {
     const tick = () => setTime(new Date().toISOString().replace("T", " ").slice(0, 19));
@@ -113,15 +143,17 @@ function Header({ glitch }: { glitch: boolean }) {
               filter: glitch ? "blur(0.5px)" : "none",
             }}
           >
-            CRÉATURE-SYNC
+            {t.title}
           </div>
           <div className="text-[9px] font-mono tracking-[0.35em] text-orange-400/60 uppercase">
-            // ORNITH-X ANIMAL TRANSLATION PROTOCOL
+            {t.subtitle}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4 text-[9px] font-mono text-gray-500 tracking-wider">
-        <span>FEUCH INSTITUTE</span>
+      <div className="flex items-center gap-4 text-[9px] font-mono text-gray-500 tracking-wider flex-wrap">
+        <LangSelector lang={lang} onChange={onLangChange} />
+        <span className="hidden sm:inline">|</span>
+        <span>{t.institute}</span>
         <span className="hidden sm:inline">|</span>
         <span className="hidden sm:inline">{time}</span>
         <div className="flex items-center gap-1">
@@ -133,7 +165,7 @@ function Header({ glitch }: { glitch: boolean }) {
               transition: "all 0.3s",
             }}
           />
-          <span style={{ color: blink ? "#00ff88" : "#00ff8844" }}>ONLINE</span>
+          <span style={{ color: blink ? "#00ff88" : "#00ff8844" }}>{t.online}</span>
         </div>
       </div>
     </header>
@@ -146,10 +178,14 @@ export default function Home() {
     crypticMessage,
     waveformData,
     spectrogramData,
+    detectedLabel,
+    lang,
+    setLang,
     startListening,
     stopListening,
     reset,
   } = useAudioAnalysis();
+  const t = UI_LABELS[lang];
 
   return (
     <div
@@ -163,7 +199,7 @@ export default function Home() {
       <ScannerLines />
       <GlitchOverlay active={state.glitchActive} />
 
-      <Header glitch={state.glitchActive} />
+      <Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} />
 
       <main className="relative flex-1 flex flex-col gap-3 p-3 sm:p-4 max-w-4xl mx-auto w-full" style={{ zIndex: 2 }}>
 
@@ -178,7 +214,7 @@ export default function Home() {
             className="rounded border p-2 backdrop-blur-sm"
             style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "80px" }}
           >
-            <div className="text-[8px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1">AUDIO WAVEFORM</div>
+            <div className="text-[8px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1">{t.freq}</div>
             <div style={{ height: "52px" }}>
               <Waveform data={waveformData} active={state.isListening || state.isAnalyzing} />
             </div>
@@ -187,12 +223,28 @@ export default function Home() {
             className="rounded border p-2 backdrop-blur-sm"
             style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "80px" }}
           >
-            <div className="text-[8px] font-mono text-orange-400/40 tracking-[0.3em] mb-1">SPECTROGRAM ANALYSIS</div>
+            <div className="text-[8px] font-mono text-orange-400/40 tracking-[0.3em] mb-1">{t.environment.toUpperCase()}</div>
             <div style={{ height: "52px" }}>
               <Spectrogram data={spectrogramData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
         </div>
+
+        {/* Live detection hint */}
+        {detectedLabel && state.isListening && (
+          <div className="flex justify-center">
+            <div
+              className="text-[9px] font-mono tracking-[0.3em] uppercase px-3 py-1 rounded border animate-pulse"
+              style={{
+                color: "#00d4ff",
+                borderColor: "#00d4ff33",
+                background: "rgba(0,212,255,0.06)",
+              }}
+            >
+              {t.detected} : {detectedLabel}
+            </div>
+          </div>
+        )}
 
         {/* Mic button + main CTA */}
         <div
@@ -206,9 +258,10 @@ export default function Home() {
             onStart={startListening}
             onStop={stopListening}
             onReset={reset}
+            lang={lang}
           />
           <div className="text-[8px] font-mono text-gray-600 tracking-widest">
-            BLACKLACE ISLAND RESEARCH STATION — SECTOR 7
+            {t.station}
           </div>
         </div>
 
@@ -216,7 +269,7 @@ export default function Home() {
         {state.isAnalyzing && (
           <div className="space-y-1">
             <div className="flex justify-between text-[8px] font-mono text-gray-500 tracking-wider">
-              <span>BIOACOUSTIC PATTERN RECOGNITION</span>
+              <span>{t.bioacoustic}</span>
               <span>{Math.floor(state.scanProgress)}%</span>
             </div>
             <div className="h-0.5 rounded-full bg-white/5 overflow-hidden">
@@ -233,25 +286,25 @@ export default function Home() {
         )}
 
         {/* Translation card */}
-        <TranslationCard state={state} />
+        <TranslationCard state={state} lang={lang} />
 
         {/* Analysis panels grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <SpeciesPanel state={state} />
-          <EmotionalPanel state={state} />
-          <ThreatPanel state={state} />
-          <BiologicalPanel state={state} />
-          <NeuralPanel state={state} />
-          <EnvironmentPanel state={state} />
+          <SpeciesPanel state={state} lang={lang} />
+          <EmotionalPanel state={state} lang={lang} />
+          <ThreatPanel state={state} lang={lang} />
+          <BiologicalPanel state={state} lang={lang} />
+          <NeuralPanel state={state} lang={lang} />
+          <EnvironmentPanel state={state} lang={lang} />
         </div>
 
         {/* Signal quality + footer */}
-        <SignalQualityPanel state={state} scanProgress={state.scanProgress} />
+        <SignalQualityPanel state={state} scanProgress={state.scanProgress} lang={lang} />
 
         <div className="flex justify-between items-center text-[7px] font-mono text-gray-700 tracking-widest py-1">
-          <span>ORNITH-X v3.7.2 // FEUCH INSTITUTE PROPRIETARY</span>
-          <span>CLASSIFICATION: LEVEL-4</span>
-          <span>BLACKLACE ISLAND</span>
+          <span>{t.footer1}</span>
+          <span>{t.footer2}</span>
+          <span>{t.footer3}</span>
         </div>
       </main>
     </div>
