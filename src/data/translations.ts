@@ -138,7 +138,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
 export type Species = {
   id: string;
   name: string;
-  scientificName: string;
+  scientificName: Record<Lang, string>;
   emoji: string;
   personality: Record<Lang, string[]>;
   emotionalStates: Record<Lang, string[]>;
@@ -271,7 +271,7 @@ export const SPECIES: Species[] = [
       en: ["Urban Pigeon",],
       fr: ["Pigeon Urbain",],
       es: ["paloma urbana",],
-      },"",
+      },
     emoji: "🕊️",
     personality: {
       en: ["CHAOTIC", "FOOD-OBSESSED", "OVERCONFIDENT", "RESILIENT"],
@@ -758,7 +758,7 @@ export interface AudioFeatures {
 export const CRYPTIC_MESSAGES = [
   "BLACKLACE ISLAND — SECTOR 7 ACTIVE",
   "FEUCH INSTITUTE — CLEARANCE LEVEL 4 REQUIRED",
-  "ORNITH-X PROTOCOL — INITIALIZED",
+  "CREATURE-SYNC PROTOCOL — INITIALIZED",
   "WARNING: CORVID NETWORK DETECTED",
   "SIGNAL ORIGIN: UNKNOWN",
   "TEMPORAL ECHO — T-MINUS 00:00:00",
@@ -771,7 +771,7 @@ export const CRYPTIC_MESSAGES = [
 export const CRYPTIC_MESSAGES_FR = [
   "ÎLE BLACKLACE — SECTEUR 7 ACTIF",
   "INSTITUT FEUCH — NIVEAU 4 REQUIS",
-  "PROTOCOLE ORNITH-X — INITIALISÉ",
+  "PROTOCOLE CREATURE-SYNC — INITIALISÉ",
   "ALERTE : RÉSEAU CORVIDÉ DÉTECTÉ",
   "ORIGINE DU SIGNAL : INCONNUE",
   "ÉCHO TEMPOREL — T-MOINS 00:00:00",
@@ -784,7 +784,7 @@ export const CRYPTIC_MESSAGES_FR = [
 export const CRYPTIC_MESSAGES_ES = [
   "ISLA BLACKLACE — SECTOR 7 ACTIVO",
   "INSTITUTO FEUCH — NIVEL 4 REQUERIDO",
-  "PROTOCOLO ORNITH-X — INICIALIZADO",
+  "PROTOCOLO CREATURE-SYNC — INICIALIZADO",
   "ADVERTENCIA: RED CORVIDAE DETECTADA",
   "ORIGEN DE SEÑAL: DESCONOCIDO",
   "ECO TEMPORAL — T-MENOS 00:00:00",
