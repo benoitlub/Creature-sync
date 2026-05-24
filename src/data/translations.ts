@@ -173,9 +173,9 @@ export const SPECIES: Species[] = [
     id: "crow",
     name: "CORVUS CORAX",
     scientificName: {
-      en: ["Common Crow",],
-      fr: ["Corbeau commun",],
-      es: ["cuervo común",],
+      en: "Common Crow",
+      fr: "Corbeau commun",
+      es: "cuervo común",
       },
     emoji: "🐦‍⬛",
     personality: {
@@ -268,9 +268,9 @@ export const SPECIES: Species[] = [
     id: "pigeon",
     name: "COLUMBA LIVIA",
     scientificName: {
-      en: ["Urban Pigeon",],
-      fr: ["Pigeon Urbain",],
-      es: ["paloma urbana",],
+      en: "Urban Pigeon",
+      fr: "Pigeon Urbain",
+      es: "paloma urbana",
       },
     emoji: "🕊️",
     personality: {
@@ -360,9 +360,9 @@ export const SPECIES: Species[] = [
     id: "duck",
     name: "ANAS PLATYRHYNCHOS",
     scientificName: {
-      en: ["Mallard Duck",],
-      fr: ["Canard",],
-      es: ["Pato",],
+      en: "Mallard Duck",
+      fr: "Canard",
+      es: "Pato",
       },
     emoji: "🦆",
     personality: {
@@ -452,9 +452,9 @@ export const SPECIES: Species[] = [
     id: "cat",
     name: "FELIS CATUS",
     scientificName: {
-      en: ["Domestic Cat",],
-      fr: ["Chat domestique",],
-      es: ["Gato domestico",],
+      en: "Domestic Cat",
+      fr: "Chat domestique",
+      es: "Gato domestico",
       }, 
     emoji: "🐱",
     personality: {
@@ -544,9 +544,9 @@ export const SPECIES: Species[] = [
     id: "dog",
     name: "CANIS LUPUS FAMILIARIS",
      scientificName: {
-      en: ["Domestic Dog",],
-      fr: ["Chien domestique",],
-      es: ["Perro domestico",],
+      en: "Domestic Dog",
+      fr: "Chien domestique",
+      es: "Perro domestico",
       },
     emoji: "🐕",
     personality: {
@@ -636,9 +636,9 @@ export const SPECIES: Species[] = [
     id: "owl",
     name: "STRIX ALUCO",
     scientificName: {
-      en: ["Tawny Owl",],
-      fr: ["Chouette hulotte",],
-      es: ["Búho leonado",],
+      en: "Tawny Owl",
+      fr: "Chouette hulotte",
+      es: "Búho leonado",
       },
     emoji: "🦉",
     personality: {
