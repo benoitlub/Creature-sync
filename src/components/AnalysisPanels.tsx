@@ -1,4 +1,4 @@
-import { type AnalysisState, type Lang, UI_LABELS, getThreatColor } from "../data/translations";
+import { type AnalysisState, type Lang, UI_LABELS, getThreatColor } from "../data/animals";
 
 type PanelProps = { className?: string; children: React.ReactNode; label: string; accent?: string };
 
