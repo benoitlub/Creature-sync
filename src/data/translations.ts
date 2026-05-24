@@ -46,7 +46,7 @@ export const UI_LABELS: Record<Lang, Record<string, string>> = {
     unknown: "UNIDENTIFIED SIGNATURE",
   },
   fr: {
-    title: "CREATURE-SYNC",
+    title: "CREATURE-SYNC V2.0",
     subtitle: "// PROTOCOLE DE TRADUCTION ANIMALE",
     initiate: "LANCER L'ÉCOUTE",
     stop: "ARRÊTER L'ÉCOUTE",
