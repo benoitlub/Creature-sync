@@ -1,4 +1,4 @@
-import type { Lang } from "./translations";
+import type { Lang } from "./animals";
 import type { AnimalId } from "./animals";
 
 export type AnimalTextProfile = {
