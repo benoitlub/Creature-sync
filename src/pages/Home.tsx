@@ -5,7 +5,7 @@ import { Waveform } from "../components/Waveform";
 import { Spectrogram } from "../components/Spectrogram";
 import { MicButton } from "../components/MicButton";
 import { TranslationCard } from "../components/TranslationCard";
-import { UI_LABELS, type Lang } from "../data/translations";
+import { UI_LABELS, type Lang } from "../data/animals";
 import {
   SpeciesPanel,
   EmotionalPanel,
