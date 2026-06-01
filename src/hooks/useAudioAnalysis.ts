@@ -12,7 +12,6 @@ import {
   type Species,
 } from "../data/animals";
 
-
 const BIRD_IDS = new Set(["crow", "pigeon", "duck", "owl"]);
 const MAMMAL_IDS = new Set(["cat", "dog"]);
 
@@ -39,7 +38,6 @@ function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
   const birds = SPECIES.filter((species) => BIRD_IDS.has(species.id));
 
   if (!features) {
-    // In a park or forest demo, silence/uncertain input should feel like “bird scanner”, not random pets.
     return Math.random() < 0.78 ? pickRandomSpecies(birds) : getWeightedSpecies(null);
   }
 
@@ -60,12 +58,10 @@ function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
   if (features.dominantFreq <= 650 && features.lowEnergyRatio >= 0.35) mammalLikelihood += 1;
   if (bestMammal && bestMammal.score >= 0.62) mammalLikelihood += 2;
 
-  // “BirdNET Lite” rule: unless a mammal is very convincing, prefer plausible birds.
   if (bestBird && (birdLikelihood >= 3 || bestBird.score >= 0.38) && mammalLikelihood < 3) {
     return bestBird.species;
   }
 
-  // If the signal is uncertain but bird-like enough, avoid absurd dog/cat detections.
   if (birdLikelihood >= 2 && mammalLikelihood < 3) {
     return pickRandomSpecies(birds);
   }
@@ -113,10 +109,11 @@ export function useAudioAnalysis() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number>(0);
-  const analysisTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const glitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const crypticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const featureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const accumulatedFeaturesRef = useRef<AudioFeatures[]>([]);
 
   const generateFakeWaveform = useCallback((intensity: number) => {
     return Array.from({ length: 64 }, (_, i) => {
@@ -169,18 +166,20 @@ export function useAudioAnalysis() {
     const intentIdx = Math.floor(Math.random() * species.biologicalIntents[lang].length);
     const scanIdx = Math.floor(Math.random() * species.environmentalScans[lang].length);
 
-    setState(s => ({ ...s, isAnalyzing: true, scanProgress: 0 }));
+    setState(s => ({ ...s, isListening: false, isAnalyzing: true, isComplete: false, scanProgress: 0 }));
     setDetectedLabel(species.name);
 
     let progress = 0;
-    const progressInterval = setInterval(() => {
-      progress += Math.random() * 8 + 2;
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    progressIntervalRef.current = setInterval(() => {
+      progress += Math.random() * 6 + 3;
       if (progress >= 100) {
         progress = 100;
-        clearInterval(progressInterval);
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
         const conf = Math.floor(72 + Math.random() * 25);
         setState(s => ({
           ...s,
+          isListening: false,
           isAnalyzing: false,
           isComplete: true,
           scanProgress: 100,
@@ -202,11 +201,22 @@ export function useAudioAnalysis() {
       } else {
         setState(s => ({ ...s, scanProgress: progress }));
       }
-    }, 80);
+    }, 120);
   }, [lang]);
 
   const startListening = useCallback(async () => {
-    setState({ ...INITIAL_STATE, isListening: true });
+    cancelAnimationFrame(animFrameRef.current);
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    if (featureIntervalRef.current) clearInterval(featureIntervalRef.current);
+    if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
+    if (crypticTimerRef.current) clearTimeout(crypticTimerRef.current);
+
+    accumulatedFeaturesRef.current = [];
+    setState({ ...INITIAL_STATE, isListening: true, scanProgress: 0 });
+    setWaveformData(Array(64).fill(0));
+    setSpectrogramData([]);
+    setAudioFeatures(null);
+    setDetectedLabel(null);
     rotateCrypticMessage();
     glitchTimerRef.current = setTimeout(triggerGlitch, 2000 + Math.random() * 3000);
 
@@ -231,11 +241,8 @@ export function useAudioAnalysis() {
 
     animateWaveform(0.4);
 
-    // Real-time classification loop during listening phase
     if (analyser && ctx) {
       let frames = 0;
-      let accumulated: AudioFeatures[] = [];
-
       featureIntervalRef.current = setInterval(() => {
         if (!analyser || !ctx) return;
         const feats = extractAudioFeatures(analyser, ctx);
@@ -243,40 +250,44 @@ export function useAudioAnalysis() {
         frames++;
 
         if (feats.rms > 0.01) {
-          accumulated.push(feats);
+          accumulatedFeaturesRef.current.push(feats);
+          if (accumulatedFeaturesRef.current.length > 140) {
+            accumulatedFeaturesRef.current = accumulatedFeaturesRef.current.slice(-140);
+          }
         }
 
-        // Every ~500ms, try to show live detection hint
-        if (frames % 5 === 0 && accumulated.length > 2) {
-          const avg = getAverageFeatures(accumulated);
+        const progress = Math.min(96, accumulatedFeaturesRef.current.length * 2.5 + Math.random() * 2);
+        setState(s => ({ ...s, scanProgress: Math.max(s.scanProgress, progress) }));
 
-          // Show a “BirdNET Lite” live hint. It prefers birds in ambiguous forest/park audio.
+        if (frames % 5 === 0 && accumulatedFeaturesRef.current.length > 2) {
+          const avg = getAverageFeatures(accumulatedFeaturesRef.current);
           if (avg) {
             const candidate = getBirdNetLiteSpecies(avg);
             setDetectedLabel(candidate.name);
+            setState(s => ({
+              ...s,
+              detectedSpecies: candidate.name,
+              speciesConfidence: Math.floor(45 + Math.random() * 45),
+              audioFeatures: avg,
+            }));
           } else {
             setDetectedLabel(null);
           }
         }
       }, 100);
     }
-
-    // After listening window, run analysis with averaged features
-    analysisTimerRef.current = setTimeout(() => {
-      let finalFeatures: AudioFeatures | null = null;
-      if (audioCtxRef.current && analyserRef.current) {
-        finalFeatures = extractAudioFeatures(analyserRef.current, audioCtxRef.current);
-      }
-      runAnalysisSequence(finalFeatures);
-    }, 2500 + Math.random() * 1500);
-  }, [animateWaveform, runAnalysisSequence, rotateCrypticMessage, triggerGlitch]);
+  }, [animateWaveform, rotateCrypticMessage, triggerGlitch]);
 
   const stopListening = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
-    if (analysisTimerRef.current) clearTimeout(analysisTimerRef.current);
+    if (featureIntervalRef.current) clearInterval(featureIntervalRef.current);
     if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
     if (crypticTimerRef.current) clearTimeout(crypticTimerRef.current);
-    if (featureIntervalRef.current) clearInterval(featureIntervalRef.current);
+
+    let finalFeatures = getAverageFeatures(accumulatedFeaturesRef.current);
+    if (!finalFeatures && audioCtxRef.current && analyserRef.current) {
+      finalFeatures = extractAudioFeatures(analyserRef.current, audioCtxRef.current);
+    }
 
     streamRef.current?.getTracks().forEach(t => t.stop());
     audioCtxRef.current?.close();
@@ -284,21 +295,38 @@ export function useAudioAnalysis() {
     audioCtxRef.current = null;
     analyserRef.current = null;
 
+    if (finalFeatures) {
+      runAnalysisSequence(finalFeatures);
+    } else {
+      setState(s => ({ ...s, isListening: false, isAnalyzing: false, isComplete: false }));
+      setDetectedLabel(null);
+    }
+  }, [runAnalysisSequence]);
+
+  const reset = useCallback(() => {
+    cancelAnimationFrame(animFrameRef.current);
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    if (featureIntervalRef.current) clearInterval(featureIntervalRef.current);
+    if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
+    if (crypticTimerRef.current) clearTimeout(crypticTimerRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    audioCtxRef.current?.close();
+    streamRef.current = null;
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    accumulatedFeaturesRef.current = [];
     setWaveformData(Array(64).fill(0));
+    setSpectrogramData([]);
     setAudioFeatures(null);
     setDetectedLabel(null);
     setState(INITIAL_STATE);
     setCrypticMessage("");
   }, []);
 
-  const reset = useCallback(() => {
-    stopListening();
-  }, [stopListening]);
-
   useEffect(() => {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
-      if (analysisTimerRef.current) clearTimeout(analysisTimerRef.current);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
       if (crypticTimerRef.current) clearTimeout(crypticTimerRef.current);
       if (featureIntervalRef.current) clearInterval(featureIntervalRef.current);
