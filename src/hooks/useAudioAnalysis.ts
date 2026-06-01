@@ -12,6 +12,72 @@ import {
   type Species,
 } from "../data/animals";
 
+
+const BIRD_IDS = new Set(["crow", "pigeon", "duck", "owl"]);
+const MAMMAL_IDS = new Set(["cat", "dog"]);
+
+function pickRandomSpecies(pool: Species[]): Species {
+  return pool[Math.floor(Math.random() * pool.length)] || SPECIES[0];
+}
+
+function getAverageFeatures(samples: AudioFeatures[]): AudioFeatures | null {
+  if (samples.length === 0) return null;
+
+  return {
+    dominantFreq: samples.reduce((sum, f) => sum + f.dominantFreq, 0) / samples.length,
+    spectralCentroid: samples.reduce((sum, f) => sum + f.spectralCentroid, 0) / samples.length,
+    flatness: samples.reduce((sum, f) => sum + f.flatness, 0) / samples.length,
+    lowEnergyRatio: samples.reduce((sum, f) => sum + f.lowEnergyRatio, 0) / samples.length,
+    zcr: samples.reduce((sum, f) => sum + f.zcr, 0) / samples.length,
+    periodicity: samples.reduce((sum, f) => sum + f.periodicity, 0) / samples.length,
+    rms: samples.reduce((sum, f) => sum + f.rms, 0) / samples.length,
+    sampleDuration: samples[0].sampleDuration,
+  };
+}
+
+function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
+  const birds = SPECIES.filter((species) => BIRD_IDS.has(species.id));
+
+  if (!features) {
+    // In a park or forest demo, silence/uncertain input should feel like “bird scanner”, not random pets.
+    return Math.random() < 0.78 ? pickRandomSpecies(birds) : getWeightedSpecies(null);
+  }
+
+  const scores = classifySpecies(features);
+  const bestBird = scores.find((entry) => BIRD_IDS.has(entry.species.id));
+  const bestMammal = scores.find((entry) => MAMMAL_IDS.has(entry.species.id));
+
+  let birdLikelihood = 0;
+  if (features.dominantFreq >= 700) birdLikelihood += 1;
+  if (features.spectralCentroid >= 1000) birdLikelihood += 1;
+  if (features.lowEnergyRatio <= 0.62) birdLikelihood += 1;
+  if (features.zcr >= 0.045) birdLikelihood += 1;
+  if (features.rms <= 0.26) birdLikelihood += 1;
+  if (features.flatness >= 0.08 && features.flatness <= 0.5) birdLikelihood += 1;
+
+  let mammalLikelihood = 0;
+  if (features.rms >= 0.08) mammalLikelihood += 1;
+  if (features.dominantFreq <= 650 && features.lowEnergyRatio >= 0.35) mammalLikelihood += 1;
+  if (bestMammal && bestMammal.score >= 0.62) mammalLikelihood += 2;
+
+  // “BirdNET Lite” rule: unless a mammal is very convincing, prefer plausible birds.
+  if (bestBird && (birdLikelihood >= 3 || bestBird.score >= 0.38) && mammalLikelihood < 3) {
+    return bestBird.species;
+  }
+
+  // If the signal is uncertain but bird-like enough, avoid absurd dog/cat detections.
+  if (birdLikelihood >= 2 && mammalLikelihood < 3) {
+    return pickRandomSpecies(birds);
+  }
+
+  const weighted = getWeightedSpecies(features);
+  if (MAMMAL_IDS.has(weighted.id) && birdLikelihood >= 2 && mammalLikelihood < 3) {
+    return pickRandomSpecies(birds);
+  }
+
+  return weighted;
+}
+
 const INITIAL_STATE: AnalysisState = {
   isListening: false,
   isAnalyzing: false,
@@ -96,7 +162,7 @@ export function useAudioAnalysis() {
   }, [lang]);
 
   const runAnalysisSequence = useCallback((finalFeatures: AudioFeatures | null, forcedSpecies?: Species) => {
-    const species = forcedSpecies || getWeightedSpecies(finalFeatures);
+    const species = forcedSpecies || getBirdNetLiteSpecies(finalFeatures);
     const { text, isPoetic } = getRandomTranslation(species, lang);
     const emotionalIdx = Math.floor(Math.random() * species.emotionalStates[lang].length);
     const threatIdx = Math.floor(Math.random() * species.threatLevels.length);
@@ -182,21 +248,12 @@ export function useAudioAnalysis() {
 
         // Every ~500ms, try to show live detection hint
         if (frames % 5 === 0 && accumulated.length > 2) {
-          const avg: AudioFeatures = {
-            dominantFreq: accumulated.reduce((s, f) => s + f.dominantFreq, 0) / accumulated.length,
-            spectralCentroid: accumulated.reduce((s, f) => s + f.spectralCentroid, 0) / accumulated.length,
-            flatness: accumulated.reduce((s, f) => s + f.flatness, 0) / accumulated.length,
-            lowEnergyRatio: accumulated.reduce((s, f) => s + f.lowEnergyRatio, 0) / accumulated.length,
-            zcr: accumulated.reduce((s, f) => s + f.zcr, 0) / accumulated.length,
-            periodicity: accumulated.reduce((s, f) => s + f.periodicity, 0) / accumulated.length,
-            rms: accumulated.reduce((s, f) => s + f.rms, 0) / accumulated.length,
-            sampleDuration: accumulated[0].sampleDuration,
-          };
+          const avg = getAverageFeatures(accumulated);
 
-          // Show tentative detection if confident enough
-          const scores = classifySpecies(avg);
-          if (scores[0].score > 0.45) {
-            setDetectedLabel(scores[0].species.name);
+          // Show a “BirdNET Lite” live hint. It prefers birds in ambiguous forest/park audio.
+          if (avg) {
+            const candidate = getBirdNetLiteSpecies(avg);
+            setDetectedLabel(candidate.name);
           } else {
             setDetectedLabel(null);
           }
