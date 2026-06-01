@@ -57,8 +57,8 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
         } else if (interval) {
           clearInterval(interval);
         }
-      }, 34);
-    }, 850);
+      }, 95);
+    }, 1800);
 
     return () => {
       clearTimeout(delay);
