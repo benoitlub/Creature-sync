@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAudioAnalysis } from "../hooks/useAudioAnalysis";
 import { ParticleField } from "../components/ParticleField";
 import { Waveform } from "../components/Waveform";
@@ -172,12 +172,93 @@ function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; o
   );
 }
 
+function LiveSignalDashboard({
+  active,
+  audioFeatures,
+  detectedLabel,
+  progress,
+}: {
+  active: boolean;
+  audioFeatures: any;
+  detectedLabel: string | null;
+  progress: number;
+}) {
+  const signal = Math.min(99, Math.max(4, Math.round((audioFeatures?.rms ?? 0.02) * 420)));
+  const dominant = Math.round(audioFeatures?.dominantFreq ?? 0);
+  const centroid = Math.round(audioFeatures?.spectralCentroid ?? 0);
+  const sharpness = Math.min(99, Math.max(6, Math.round((audioFeatures?.zcr ?? 0.05) * 420)));
+  const gossip = Math.min(99, Math.max(12, Math.round((audioFeatures?.flatness ?? 0.2) * 180 + sharpness * 0.45)));
+  const bipede = Math.min(99, Math.max(10, Math.round(signal * 0.55 + gossip * 0.25 + 18)));
+  const canide = Math.min(99, Math.max(8, Math.round((audioFeatures?.lowEnergyRatio ?? 0.3) * 95)));
+
+  const speciesRows = useMemo(() => {
+    const main = detectedLabel || "MERLE / CORVIDÉ";
+    return [
+      { label: main, value: Math.min(96, Math.max(38, Math.round(progress || 41))) },
+      { label: "PIGEON SUSPECT", value: Math.min(82, Math.max(18, Math.round(gossip * 0.72))) },
+      { label: "CRAPAUD DIPLOMATE", value: Math.min(76, Math.max(9, Math.round(canide * 0.55))) },
+    ];
+  }, [detectedLabel, progress, gossip, canide]);
+
+  return (
+    <div
+      className="rounded border p-3 backdrop-blur-sm"
+      style={{ borderColor: active ? "#00d4ff44" : "#ffffff11", background: "rgba(0,10,25,0.68)" }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[9px] font-mono tracking-[0.35em] uppercase text-cyan-400/70">Live creature radar</div>
+        <div className="text-[8px] font-mono tracking-[0.25em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>
+          {active ? "CHANNEL OPEN" : "STANDBY"}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+        {speciesRows.map(row => (
+          <div key={row.label} className="rounded border px-2 py-2" style={{ borderColor: "#ffffff12", background: "rgba(255,255,255,0.025)" }}>
+            <div className="flex justify-between text-[9px] font-mono tracking-wider mb-1">
+              <span className="text-gray-300 truncate">{row.label}</span>
+              <span className="text-cyan-300">{row.value}%</span>
+            </div>
+            <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${row.value}%`, background: "linear-gradient(90deg,#00d4ff99,#ff8c00aa)" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[8px] font-mono tracking-wider">
+        <div className="rounded border p-2" style={{ borderColor: "#00d4ff18" }}>
+          <div className="text-gray-500 uppercase">Dominante</div>
+          <div className="text-cyan-300">{dominant ? `${dominant} Hz` : "--"}</div>
+        </div>
+        <div className="rounded border p-2" style={{ borderColor: "#00d4ff18" }}>
+          <div className="text-gray-500 uppercase">Spectre aigu</div>
+          <div className="text-cyan-300">{centroid ? `${centroid} Hz` : "--"}</div>
+        </div>
+        <div className="rounded border p-2" style={{ borderColor: "#ff8c0018" }}>
+          <div className="text-gray-500 uppercase">Commérage</div>
+          <div className="text-orange-300">{gossip}%</div>
+        </div>
+        <div className="rounded border p-2" style={{ borderColor: "#ff8c0018" }}>
+          <div className="text-gray-500 uppercase">Canidé promené</div>
+          <div className="text-orange-300">{canide > 60 ? "CRITIQUE" : `${canide}%`}</div>
+        </div>
+      </div>
+
+      <div className="mt-2 text-[8px] font-mono text-gray-500 tracking-wider">
+        Bipède observé : {bipede}% // Signal : {signal}% // Bavardage probable : {gossip > 65 ? "élevé" : "instable"}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const {
     state,
     crypticMessage,
     waveformData,
     spectrogramData,
+    audioFeatures,
     detectedLabel,
     lang,
     setLang,
@@ -202,6 +283,13 @@ export default function Home() {
       <Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} />
 
       <main className="relative flex-1 flex flex-col gap-3 p-3 sm:p-4 max-w-4xl mx-auto w-full" style={{ zIndex: 2 }}>
+
+        <LiveSignalDashboard
+          active={state.isListening || state.isAnalyzing}
+          audioFeatures={audioFeatures || state.audioFeatures}
+          detectedLabel={detectedLabel || state.detectedSpecies}
+          progress={state.scanProgress}
+        />
 
         {/* Cryptic ticker */}
         <div className="flex justify-center">
@@ -248,7 +336,7 @@ export default function Home() {
 
         {/* Mic button + main CTA */}
         <div
-          className="rounded border flex flex-col items-center justify-center gap-2 py-6 backdrop-blur-sm"
+          className="rounded border flex flex-col items-center justify-center gap-2 py-3 backdrop-blur-sm"
           style={{ borderColor: "#ffffff11", background: "rgba(0,10,25,0.5)" }}
         >
           <MicButton
@@ -261,15 +349,15 @@ export default function Home() {
             lang={lang}
           />
           <div className="text-[8px] font-mono text-gray-600 tracking-widest">
-            {t.station}
+            {state.isListening ? "CANAL OUVERT // STOP POUR FIGER" : t.station}
           </div>
         </div>
 
         {/* Progress bar during analysis */}
-        {state.isAnalyzing && (
+        {(state.isAnalyzing || state.isListening) && (
           <div className="space-y-1">
             <div className="flex justify-between text-[8px] font-mono text-gray-500 tracking-wider">
-              <span>{t.bioacoustic}</span>
+              <span>{state.isListening ? "CAPTATION CONTINUE" : t.bioacoustic}</span>
               <span>{Math.floor(state.scanProgress)}%</span>
             </div>
             <div className="h-0.5 rounded-full bg-white/5 overflow-hidden">
