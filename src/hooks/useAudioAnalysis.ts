@@ -158,51 +158,57 @@ export function useAudioAnalysis() {
     crypticTimerRef.current = setTimeout(rotateCrypticMessage, 4000 + Math.random() * 6000);
   }, [lang]);
 
-  const runAnalysisSequence = useCallback((finalFeatures: AudioFeatures | null, forcedSpecies?: Species) => {
-    const species = forcedSpecies || getBirdNetLiteSpecies(finalFeatures);
+  const buildReading = useCallback((species: Species, features: AudioFeatures | null, complete: boolean, confidence?: number) => {
     const { text, isPoetic } = getRandomTranslation(species, lang);
     const emotionalIdx = Math.floor(Math.random() * species.emotionalStates[lang].length);
     const threatIdx = Math.floor(Math.random() * species.threatLevels.length);
     const intentIdx = Math.floor(Math.random() * species.biologicalIntents[lang].length);
     const scanIdx = Math.floor(Math.random() * species.environmentalScans[lang].length);
+    const conf = confidence ?? Math.floor(48 + Math.random() * 35);
 
-    setState(s => ({ ...s, isListening: false, isAnalyzing: true, isComplete: false, scanProgress: 0 }));
-    setDetectedLabel(species.name);
-
-    let progress = 0;
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    progressIntervalRef.current = setInterval(() => {
-      progress += Math.random() * 6 + 3;
-      if (progress >= 100) {
-        progress = 100;
-        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-        const conf = Math.floor(72 + Math.random() * 25);
-        setState(s => ({
-          ...s,
-          isListening: false,
-          isAnalyzing: false,
-          isComplete: true,
-          scanProgress: 100,
-          species,
-          confidence: conf,
-          emotionalState: species.emotionalStates[lang][emotionalIdx],
-          threatLevel: species.threatLevels[threatIdx],
-          biologicalIntent: species.biologicalIntents[lang][intentIdx],
-          neuralResonance: Math.floor(60 + Math.random() * 35),
-          signalQuality: Math.floor(75 + Math.random() * 22),
-          translation: text,
-          environmentalScan: species.environmentalScans[lang][scanIdx],
-          isPoetic,
-          detectedSpecies: species.name,
-          speciesConfidence: conf,
-          audioFeatures: finalFeatures,
-        }));
-        setDetectedLabel(null);
-      } else {
-        setState(s => ({ ...s, scanProgress: progress }));
-      }
-    }, 120);
+    return {
+      species,
+      confidence: conf,
+      emotionalState: species.emotionalStates[lang][emotionalIdx],
+      threatLevel: species.threatLevels[threatIdx],
+      biologicalIntent: species.biologicalIntents[lang][intentIdx],
+      neuralResonance: Math.floor(45 + Math.random() * 45),
+      signalQuality: Math.floor(55 + Math.random() * 40),
+      translation: text,
+      environmentalScan: species.environmentalScans[lang][scanIdx],
+      isPoetic,
+      isComplete: complete,
+      detectedSpecies: species.name,
+      speciesConfidence: conf,
+      audioFeatures: features,
+    };
   }, [lang]);
+
+  const publishLiveReading = useCallback((features: AudioFeatures | null, progress: number) => {
+    const species = getBirdNetLiteSpecies(features);
+    const confidence = Math.floor(Math.min(92, Math.max(42, progress + Math.random() * 18)));
+    setDetectedLabel(species.name);
+    setState(s => ({
+      ...s,
+      ...buildReading(species, features, false, confidence),
+      isListening: true,
+      isAnalyzing: false,
+      scanProgress: Math.max(s.scanProgress, progress),
+    }));
+  }, [buildReading]);
+
+  const finalizeReading = useCallback((finalFeatures: AudioFeatures | null) => {
+    const species = getBirdNetLiteSpecies(finalFeatures);
+    const confidence = Math.floor(72 + Math.random() * 25);
+    setDetectedLabel(null);
+    setState(s => ({
+      ...s,
+      ...buildReading(species, finalFeatures, true, confidence),
+      isListening: false,
+      isAnalyzing: false,
+      scanProgress: 100,
+    }));
+  }, [buildReading]);
 
   const startListening = useCallback(async () => {
     cancelAnimationFrame(animFrameRef.current);
@@ -257,26 +263,16 @@ export function useAudioAnalysis() {
         }
 
         const progress = Math.min(96, accumulatedFeaturesRef.current.length * 2.5 + Math.random() * 2);
-        setState(s => ({ ...s, scanProgress: Math.max(s.scanProgress, progress) }));
+        const avg = getAverageFeatures(accumulatedFeaturesRef.current) || feats;
+        setState(s => ({ ...s, scanProgress: Math.max(s.scanProgress, progress), audioFeatures: avg }));
 
-        if (frames % 5 === 0 && accumulatedFeaturesRef.current.length > 2) {
-          const avg = getAverageFeatures(accumulatedFeaturesRef.current);
-          if (avg) {
-            const candidate = getBirdNetLiteSpecies(avg);
-            setDetectedLabel(candidate.name);
-            setState(s => ({
-              ...s,
-              detectedSpecies: candidate.name,
-              speciesConfidence: Math.floor(45 + Math.random() * 45),
-              audioFeatures: avg,
-            }));
-          } else {
-            setDetectedLabel(null);
-          }
+        // Le dialogue apparaît pendant la captation, pas seulement après l'arrêt.
+        if (frames % 12 === 0 && accumulatedFeaturesRef.current.length > 2) {
+          publishLiveReading(avg, progress);
         }
       }, 100);
     }
-  }, [animateWaveform, rotateCrypticMessage, triggerGlitch]);
+  }, [animateWaveform, rotateCrypticMessage, triggerGlitch, publishLiveReading]);
 
   const stopListening = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
@@ -296,12 +292,12 @@ export function useAudioAnalysis() {
     analyserRef.current = null;
 
     if (finalFeatures) {
-      runAnalysisSequence(finalFeatures);
+      finalizeReading(finalFeatures);
     } else {
       setState(s => ({ ...s, isListening: false, isAnalyzing: false, isComplete: false }));
       setDetectedLabel(null);
     }
-  }, [runAnalysisSequence]);
+  }, [finalizeReading]);
 
   const reset = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
