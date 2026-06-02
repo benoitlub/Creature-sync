@@ -49,17 +49,17 @@ export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onSto
     <div
       className="fixed left-0 right-0 px-3 z-[999]"
       style={{
-        bottom: "calc(5.8rem + env(safe-area-inset-bottom, 0px))",
+        bottom: "env(safe-area-inset-bottom, 0px)",
         pointerEvents: "none",
       }}
     >
       <div
-        className="mx-auto max-w-4xl rounded-xl border backdrop-blur-md flex items-center justify-between gap-3 px-3 py-2"
+        className="mx-auto max-w-4xl rounded-t-xl rounded-b-none border border-b-0 backdrop-blur-md flex items-center justify-between gap-3 px-3 py-2"
         style={{
           pointerEvents: "auto",
           borderColor: `${accent}66`,
-          background: "linear-gradient(180deg, rgba(2,8,20,0.96), rgba(0,10,25,0.9))",
-          boxShadow: `0 -8px 30px rgba(0,0,0,0.45), 0 0 24px ${accent}30, inset 0 0 18px ${accent}08`,
+          background: "linear-gradient(180deg, rgba(2,8,20,0.97), rgba(0,10,25,0.94))",
+          boxShadow: `0 -10px 28px rgba(0,0,0,0.55), 0 0 24px ${accent}30, inset 0 0 18px ${accent}08`,
         }}
       >
         <div className="min-w-0 flex-1">
