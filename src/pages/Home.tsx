@@ -282,8 +282,10 @@ export default function Home() {
 
       <Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} />
 
-      <main className="relative flex-1 flex flex-col gap-3 p-3 sm:p-4 max-w-4xl mx-auto w-full" style={{ zIndex: 2 }}>
-
+      <main
+        className="relative flex-1 flex flex-col gap-3 p-3 sm:p-4 max-w-4xl mx-auto w-full"
+        style={{ zIndex: 2, paddingBottom: "calc(13rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <LiveSignalDashboard
           active={state.isListening || state.isAnalyzing}
           audioFeatures={audioFeatures || state.audioFeatures}
@@ -291,26 +293,18 @@ export default function Home() {
           progress={state.scanProgress}
         />
 
-        {/* Cryptic ticker */}
         <div className="flex justify-center">
           <CrypticTicker message={crypticMessage} />
         </div>
 
-        {/* Waveform + spectrogram */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div
-            className="rounded border p-2 backdrop-blur-sm"
-            style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "80px" }}
-          >
+          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "80px" }}>
             <div className="text-[8px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1">{t.freq}</div>
             <div style={{ height: "52px" }}>
               <Waveform data={waveformData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
-          <div
-            className="rounded border p-2 backdrop-blur-sm"
-            style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "80px" }}
-          >
+          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "80px" }}>
             <div className="text-[8px] font-mono text-orange-400/40 tracking-[0.3em] mb-1">{t.environment.toUpperCase()}</div>
             <div style={{ height: "52px" }}>
               <Spectrogram data={spectrogramData} active={state.isListening || state.isAnalyzing} />
@@ -318,42 +312,24 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Live detection hint */}
         {detectedLabel && state.isListening && (
           <div className="flex justify-center">
-            <div
-              className="text-[9px] font-mono tracking-[0.3em] uppercase px-3 py-1 rounded border animate-pulse"
-              style={{
-                color: "#00d4ff",
-                borderColor: "#00d4ff33",
-                background: "rgba(0,212,255,0.06)",
-              }}
-            >
+            <div className="text-[9px] font-mono tracking-[0.3em] uppercase px-3 py-1 rounded border animate-pulse" style={{ color: "#00d4ff", borderColor: "#00d4ff33", background: "rgba(0,212,255,0.06)" }}>
               {t.detected} : {detectedLabel}
             </div>
           </div>
         )}
 
-        {/* Mic button + main CTA */}
-        <div
-          className="rounded border flex flex-col items-center justify-center gap-2 py-3 backdrop-blur-sm"
-          style={{ borderColor: "#ffffff11", background: "rgba(0,10,25,0.5)" }}
-        >
-          <MicButton
-            isListening={state.isListening}
-            isAnalyzing={state.isAnalyzing}
-            isComplete={state.isComplete}
-            onStart={startListening}
-            onStop={stopListening}
-            onReset={reset}
-            lang={lang}
-          />
-          <div className="text-[8px] font-mono text-gray-600 tracking-widest">
-            {state.isListening ? "CANAL OUVERT // STOP POUR FIGER" : t.station}
-          </div>
-        </div>
+        <MicButton
+          isListening={state.isListening}
+          isAnalyzing={state.isAnalyzing}
+          isComplete={state.isComplete}
+          onStart={startListening}
+          onStop={stopListening}
+          onReset={reset}
+          lang={lang}
+        />
 
-        {/* Progress bar during analysis */}
         {(state.isAnalyzing || state.isListening) && (
           <div className="space-y-1">
             <div className="flex justify-between text-[8px] font-mono text-gray-500 tracking-wider">
@@ -361,22 +337,13 @@ export default function Home() {
               <span>{Math.floor(state.scanProgress)}%</span>
             </div>
             <div className="h-0.5 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-150"
-                style={{
-                  width: `${state.scanProgress}%`,
-                  background: "linear-gradient(90deg, #00d4ff88, #ff8c00)",
-                  boxShadow: "0 0 8px #ff8c00",
-                }}
-              />
+              <div className="h-full rounded-full transition-all duration-150" style={{ width: `${state.scanProgress}%`, background: "linear-gradient(90deg, #00d4ff88, #ff8c00)", boxShadow: "0 0 8px #ff8c00" }} />
             </div>
           </div>
         )}
 
-        {/* Translation card */}
         <TranslationCard state={state} lang={lang} />
 
-        {/* Analysis panels grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <SpeciesPanel state={state} lang={lang} />
           <EmotionalPanel state={state} lang={lang} />
@@ -386,7 +353,6 @@ export default function Home() {
           <EnvironmentPanel state={state} lang={lang} />
         </div>
 
-        {/* Signal quality + footer */}
         <SignalQualityPanel state={state} scanProgress={state.scanProgress} lang={lang} />
 
         <div className="flex justify-between items-center text-[7px] font-mono text-gray-700 tracking-widest py-1">
