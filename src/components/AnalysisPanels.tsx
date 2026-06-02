@@ -74,19 +74,19 @@ function getPhaseLabel(state: AnalysisState, lang: Lang) {
 export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
   const active = isActive(state);
-  const speciesName = state.species?.name || state.detectedSpecies || (state.isListening ? "SIGNATURE AVIAIRE" : "");
-  const commonName = state.species?.scientificName?.[lang] || (state.isListening ? "Classification progressive" : "");
+  const commonName = state.species?.scientificName?.[lang] || state.detectedSpecies || (state.isListening ? "Signature aviaire" : "");
+  const latinName = state.species?.name || (state.isListening ? "Classification progressive" : "");
   const confidence = state.isComplete ? state.confidence : liveProgress(state, state.speciesConfidence || 34);
 
   return (
     <Panel label={t.species} accent="#00d4ff">
-      {active && speciesName ? (
+      {active && commonName ? (
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-base font-mono font-bold text-white tracking-wider leading-tight">{speciesName}</div>
+            <div className="text-base font-mono font-bold text-white tracking-wider leading-tight">{commonName}</div>
             {!state.isComplete && <span className="text-[8px] text-cyan-300/70 tracking-widest">{getPhaseLabel(state, lang)}</span>}
           </div>
-          <div className="text-[10px] font-mono text-cyan-400/70 italic">{commonName}</div>
+          <div className="text-[10px] font-mono text-cyan-400/70 italic uppercase">{latinName}</div>
           {state.species && (
             <div className="flex flex-wrap gap-1 mt-2">
               {state.species.personality[lang].slice(0, state.isComplete ? 4 : 2).map(p => (
