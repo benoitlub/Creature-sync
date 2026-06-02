@@ -8,9 +8,21 @@ type Props = {
   onStop: () => void;
   onReset: () => void;
   lang: Lang;
+  signalQuality?: number;
+  habitat?: string;
 };
 
-export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onStop, onReset, lang }: Props) {
+function Witness({ label, value, color }: { label: string; value: string | number; color: string }) {
+  return (
+    <div className="flex items-center gap-1 text-[7px] font-mono tracking-widest uppercase text-gray-500">
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 5px ${color}` }} />
+      <span>{label}</span>
+      <span style={{ color }}>{value}</span>
+    </div>
+  );
+}
+
+export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onStop, onReset, lang, signalQuality = 0, habitat = "---" }: Props) {
   const t = UI_LABELS[lang];
   const label = isAnalyzing
     ? t.analyzing
@@ -35,9 +47,9 @@ export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onSto
 
   return (
     <div
-      className="fixed left-0 right-0 px-3 z-[80]"
+      className="fixed left-0 right-0 px-3 z-[999]"
       style={{
-        bottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        bottom: "calc(5.8rem + env(safe-area-inset-bottom, 0px))",
         pointerEvents: "none",
       }}
     >
@@ -45,20 +57,21 @@ export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onSto
         className="mx-auto max-w-4xl rounded-xl border backdrop-blur-md flex items-center justify-between gap-3 px-3 py-2"
         style={{
           pointerEvents: "auto",
-          borderColor: `${accent}55`,
-          background: "linear-gradient(180deg, rgba(2,8,20,0.94), rgba(0,10,25,0.88))",
-          boxShadow: `0 -8px 30px rgba(0,0,0,0.35), 0 0 22px ${accent}22, inset 0 0 18px ${accent}08`,
+          borderColor: `${accent}66`,
+          background: "linear-gradient(180deg, rgba(2,8,20,0.96), rgba(0,10,25,0.9))",
+          boxShadow: `0 -8px 30px rgba(0,0,0,0.45), 0 0 24px ${accent}30, inset 0 0 18px ${accent}08`,
         }}
       >
-        <div className="min-w-0">
-          <div
-            className="text-[9px] sm:text-[10px] tracking-[0.28em] font-mono uppercase truncate"
-            style={{ color: accent }}
-          >
+        <div className="min-w-0 flex-1">
+          <div className="text-[9px] sm:text-[10px] tracking-[0.28em] font-mono uppercase truncate" style={{ color: accent }}>
             {label}
           </div>
           <div className="text-[7px] sm:text-[8px] font-mono text-gray-600 tracking-widest uppercase truncate mt-0.5">
             {status}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+            <Witness label="SIG" value={`${Math.round(signalQuality)}%`} color="#00d4ff" />
+            <Witness label="ENV" value={habitat} color="#ff8c00" />
           </div>
         </div>
 
