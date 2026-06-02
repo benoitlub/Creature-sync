@@ -35,12 +35,7 @@ function GlitchOverlay({ active }: { active: boolean }) {
   return (
     <div
       className="pointer-events-none fixed inset-0"
-      style={{
-        zIndex: 50,
-        background: "rgba(0, 212, 255, 0.03)",
-        animation: "none",
-        mixBlendMode: "screen",
-      }}
+      style={{ zIndex: 50, background: "rgba(0, 212, 255, 0.03)", mixBlendMode: "screen" }}
     >
       <div
         className="absolute"
@@ -73,12 +68,7 @@ function CrypticTicker({ message }: { message: string }) {
   return (
     <div
       className="text-[8px] font-mono tracking-[0.4em] uppercase px-3 py-1 rounded-sm border"
-      style={{
-        color: "#ff8c0088",
-        borderColor: "#ff8c0022",
-        background: "#ff8c0008",
-        animation: "fadeInOut 4s ease-in-out",
-      }}
+      style={{ color: "#ff8c0088", borderColor: "#ff8c0022", background: "#ff8c0008", animation: "fadeInOut 4s ease-in-out" }}
     >
       ▲ {message} ▲
     </div>
@@ -131,23 +121,16 @@ function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; o
   }, []);
 
   return (
-    <header className="relative border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-3"
-      style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.9)" }}>
+    <header className="relative border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-3" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.9)" }}>
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <div
             className="text-lg font-mono font-bold tracking-[0.15em] uppercase leading-none"
-            style={{
-              color: "#00d4ff",
-              textShadow: "0 0 12px #00d4ff88",
-              filter: glitch ? "blur(0.5px)" : "none",
-            }}
+            style={{ color: "#00d4ff", textShadow: "0 0 12px #00d4ff88", filter: glitch ? "blur(0.5px)" : "none" }}
           >
             {t.title}
           </div>
-          <div className="text-[9px] font-mono tracking-[0.35em] text-orange-400/60 uppercase">
-            {t.subtitle}
-          </div>
+          <div className="text-[9px] font-mono tracking-[0.35em] text-orange-400/60 uppercase">{t.subtitle}</div>
         </div>
       </div>
       <div className="flex items-center gap-4 text-[9px] font-mono text-gray-500 tracking-wider flex-wrap">
@@ -159,16 +142,31 @@ function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; o
         <div className="flex items-center gap-1">
           <div
             className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: blink ? "#00ff88" : "#00ff8844",
-              boxShadow: blink ? "0 0 4px #00ff88" : "none",
-              transition: "all 0.3s",
-            }}
+            style={{ background: blink ? "#00ff88" : "#00ff8844", boxShadow: blink ? "0 0 4px #00ff88" : "none", transition: "all 0.3s" }}
           />
           <span style={{ color: blink ? "#00ff88" : "#00ff8844" }}>{t.online}</span>
         </div>
       </div>
     </header>
+  );
+}
+
+function LedBar({ value }: { value: number }) {
+  const lit = Math.max(1, Math.min(10, Math.round(value / 10)));
+  return (
+    <div className="flex gap-0.5 w-20 justify-end" aria-label={`${value}%`}>
+      {Array.from({ length: 10 }, (_, i) => (
+        <span
+          key={i}
+          className="h-2 w-1.5 rounded-sm transition-all duration-300"
+          style={{
+            background: i < lit ? (i > 7 ? "#ff8c00" : "#00d4ff") : "rgba(255,255,255,0.08)",
+            boxShadow: i < lit ? `0 0 5px ${i > 7 ? "#ff8c00" : "#00d4ff"}` : "none",
+            opacity: i < lit ? 0.95 : 0.35,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -184,12 +182,10 @@ function LiveSignalDashboard({
   progress: number;
 }) {
   const signal = Math.min(99, Math.max(4, Math.round((audioFeatures?.rms ?? 0.02) * 420)));
-  const dominant = Math.round(audioFeatures?.dominantFreq ?? 0);
-  const centroid = Math.round(audioFeatures?.spectralCentroid ?? 0);
   const sharpness = Math.min(99, Math.max(6, Math.round((audioFeatures?.zcr ?? 0.05) * 420)));
   const gossip = Math.min(99, Math.max(12, Math.round((audioFeatures?.flatness ?? 0.2) * 180 + sharpness * 0.45)));
-  const bipede = Math.min(99, Math.max(10, Math.round(signal * 0.55 + gossip * 0.25 + 18)));
   const canide = Math.min(99, Math.max(8, Math.round((audioFeatures?.lowEnergyRatio ?? 0.3) * 95)));
+  const habitat = (audioFeatures?.spectralCentroid ?? 0) > 1800 && (audioFeatures?.lowEnergyRatio ?? 0.3) < 0.5 ? "FORÊT" : "MIXTE";
 
   const speciesRows = useMemo(() => {
     const main = detectedLabel || "MERLE / CORVIDÉ";
@@ -202,51 +198,37 @@ function LiveSignalDashboard({
 
   return (
     <div
-      className="rounded border p-3 backdrop-blur-sm"
+      className="rounded border px-3 py-2 backdrop-blur-sm"
       style={{ borderColor: active ? "#00d4ff44" : "#ffffff11", background: "rgba(0,10,25,0.68)" }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[9px] font-mono tracking-[0.35em] uppercase text-cyan-400/70">Live creature radar</div>
-        <div className="text-[8px] font-mono tracking-[0.25em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>
-          {active ? "CHANNEL OPEN" : "STANDBY"}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="text-[9px] font-mono tracking-[0.32em] uppercase text-cyan-400/70">Signatures détectées</div>
+        <div className="text-[8px] font-mono tracking-[0.22em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>
+          {active ? "LIVE" : "STANDBY"}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-        {speciesRows.map(row => (
-          <div key={row.label} className="rounded border px-2 py-2" style={{ borderColor: "#ffffff12", background: "rgba(255,255,255,0.025)" }}>
-            <div className="flex justify-between text-[9px] font-mono tracking-wider mb-1">
-              <span className="text-gray-300 truncate">{row.label}</span>
-              <span className="text-cyan-300">{row.value}%</span>
-            </div>
-            <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${row.value}%`, background: "linear-gradient(90deg,#00d4ff99,#ff8c00aa)" }} />
-            </div>
+      <div className="space-y-1">
+        {speciesRows.map((row, index) => (
+          <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider">
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: index === 0 ? "#00ff88" : index === 1 ? "#00d4ff" : "#ff8c00",
+                boxShadow: `0 0 5px ${index === 0 ? "#00ff88" : index === 1 ? "#00d4ff" : "#ff8c00"}`,
+              }}
+            />
+            <span className="text-gray-300 truncate uppercase">{row.label}</span>
+            <LedBar value={row.value} />
+            <span className="text-cyan-300 text-right">{row.value}%</span>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[8px] font-mono tracking-wider">
-        <div className="rounded border p-2" style={{ borderColor: "#00d4ff18" }}>
-          <div className="text-gray-500 uppercase">Dominante</div>
-          <div className="text-cyan-300">{dominant ? `${dominant} Hz` : "--"}</div>
-        </div>
-        <div className="rounded border p-2" style={{ borderColor: "#00d4ff18" }}>
-          <div className="text-gray-500 uppercase">Spectre aigu</div>
-          <div className="text-cyan-300">{centroid ? `${centroid} Hz` : "--"}</div>
-        </div>
-        <div className="rounded border p-2" style={{ borderColor: "#ff8c0018" }}>
-          <div className="text-gray-500 uppercase">Commérage</div>
-          <div className="text-orange-300">{gossip}%</div>
-        </div>
-        <div className="rounded border p-2" style={{ borderColor: "#ff8c0018" }}>
-          <div className="text-gray-500 uppercase">Canidé promené</div>
-          <div className="text-orange-300">{canide > 60 ? "CRITIQUE" : `${canide}%`}</div>
-        </div>
-      </div>
-
-      <div className="mt-2 text-[8px] font-mono text-gray-500 tracking-wider">
-        Bipède observé : {bipede}% // Signal : {signal}% // Bavardage probable : {gossip > 65 ? "élevé" : "instable"}
+      <div className="mt-2 pt-1.5 border-t border-white/5 grid grid-cols-3 gap-2 text-[8px] font-mono tracking-wider text-gray-500">
+        <div>Signal <span className="text-cyan-300">{signal}%</span></div>
+        <div>Amb. <span className="text-orange-300">{habitat}</span></div>
+        <div>Bipède <span className="text-purple-300">{Math.min(99, Math.max(10, Math.round(signal * 0.55 + gossip * 0.25 + 18)))}%</span></div>
       </div>
     </div>
   );
@@ -283,7 +265,7 @@ export default function Home() {
       <Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} />
 
       <main
-        className="relative flex-1 flex flex-col gap-3 p-3 sm:p-4 max-w-4xl mx-auto w-full"
+        className="relative flex-1 flex flex-col gap-2.5 p-3 sm:p-4 max-w-4xl mx-auto w-full"
         style={{ zIndex: 2, paddingBottom: "calc(13rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <LiveSignalDashboard
@@ -297,16 +279,16 @@ export default function Home() {
           <CrypticTicker message={crypticMessage} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "80px" }}>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "58px" }}>
             <div className="text-[8px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1">{t.freq}</div>
-            <div style={{ height: "52px" }}>
+            <div style={{ height: "32px" }}>
               <Waveform data={waveformData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
-          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "80px" }}>
+          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "58px" }}>
             <div className="text-[8px] font-mono text-orange-400/40 tracking-[0.3em] mb-1">{t.environment.toUpperCase()}</div>
-            <div style={{ height: "52px" }}>
+            <div style={{ height: "32px" }}>
               <Spectrogram data={spectrogramData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
