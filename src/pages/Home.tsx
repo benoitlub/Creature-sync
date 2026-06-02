@@ -67,7 +67,7 @@ function CrypticTicker({ message }: { message: string }) {
   if (!message) return null;
   return (
     <div
-      className="text-[8px] font-mono tracking-[0.4em] uppercase px-3 py-1 rounded-sm border"
+      className="text-[7px] font-mono tracking-[0.36em] uppercase px-2.5 py-0.5 rounded-sm border leading-tight"
       style={{ color: "#ff8c0088", borderColor: "#ff8c0022", background: "#ff8c0008", animation: "fadeInOut 4s ease-in-out" }}
     >
       ▲ {message} ▲
@@ -151,24 +151,31 @@ function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; o
   );
 }
 
-function LedBar({ value }: { value: number }) {
-  const lit = Math.max(1, Math.min(10, Math.round(value / 10)));
+function LedBar({ value, pending = false }: { value: number; pending?: boolean }) {
+  const lit = pending ? 0 : Math.max(0, Math.min(10, Math.round(value / 10)));
   return (
     <div className="flex gap-0.5 w-20 justify-end" aria-label={`${value}%`}>
       {Array.from({ length: 10 }, (_, i) => (
         <span
           key={i}
-          className="h-2 w-1.5 rounded-sm transition-all duration-300"
+          className="h-2 w-1.5 rounded-sm transition-all duration-200"
           style={{
             background: i < lit ? (i > 7 ? "#ff8c00" : "#00d4ff") : "rgba(255,255,255,0.08)",
             boxShadow: i < lit ? `0 0 5px ${i > 7 ? "#ff8c00" : "#00d4ff"}` : "none",
-            opacity: i < lit ? 0.95 : 0.35,
+            opacity: pending ? 0.22 : i < lit ? 0.95 : 0.35,
           }}
         />
       ))}
     </div>
   );
 }
+
+type SignatureRow = {
+  label: string;
+  value: number;
+  tone: "primary" | "secondary" | "warning" | "idle";
+  pending?: boolean;
+};
 
 function LiveSignalDashboard({
   active,
@@ -181,20 +188,40 @@ function LiveSignalDashboard({
   detectedLabel: string | null;
   progress: number;
 }) {
-  const signal = Math.min(99, Math.max(4, Math.round((audioFeatures?.rms ?? 0.02) * 420)));
-  const sharpness = Math.min(99, Math.max(6, Math.round((audioFeatures?.zcr ?? 0.05) * 420)));
-  const gossip = Math.min(99, Math.max(12, Math.round((audioFeatures?.flatness ?? 0.2) * 180 + sharpness * 0.45)));
-  const canide = Math.min(99, Math.max(8, Math.round((audioFeatures?.lowEnergyRatio ?? 0.3) * 95)));
-  const habitat = (audioFeatures?.spectralCentroid ?? 0) > 1800 && (audioFeatures?.lowEnergyRatio ?? 0.3) < 0.5 ? "FORÊT" : "MIXTE";
+  const rawSignal = Math.round((audioFeatures?.rms ?? 0) * 420);
+  const signal = Math.min(99, Math.max(0, rawSignal));
+  const sharpness = Math.min(99, Math.max(0, Math.round((audioFeatures?.zcr ?? 0) * 420)));
+  const gossip = Math.min(99, Math.max(0, Math.round((audioFeatures?.flatness ?? 0) * 180 + sharpness * 0.45)));
+  const lowEnergy = Math.min(99, Math.max(0, Math.round((audioFeatures?.lowEnergyRatio ?? 0) * 95)));
+  const habitat = (audioFeatures?.spectralCentroid ?? 0) > 1800 && (audioFeatures?.lowEnergyRatio ?? 0.3) < 0.5 ? "FORÊT" : active ? "MIXTE" : "---";
+  const hasSignal = active || progress > 1 || Boolean(detectedLabel);
 
-  const speciesRows = useMemo(() => {
-    const main = detectedLabel || "MERLE / CORVIDÉ";
-    return [
-      { label: main, value: Math.min(96, Math.max(38, Math.round(progress || 41))) },
-      { label: "PIGEON SUSPECT", value: Math.min(82, Math.max(18, Math.round(gossip * 0.72))) },
-      { label: "CRAPAUD DIPLOMATE", value: Math.min(76, Math.max(9, Math.round(canide * 0.55))) },
-    ];
-  }, [detectedLabel, progress, gossip, canide]);
+  const signatureRows = useMemo<SignatureRow[]>(() => {
+    if (!hasSignal) {
+      return [{ label: "EMPLACEMENT SIGNATURE", value: 0, tone: "idle", pending: true }];
+    }
+
+    const rows: SignatureRow[] = [];
+    const primaryValue = Math.min(96, Math.max(8, Math.round(detectedLabel ? Math.max(progress, signal) : Math.max(progress, signal * 1.4))));
+    rows.push({
+      label: detectedLabel || (progress > 24 ? "SIGNATURE AVIAIRE" : "ACQUISITION DU SIGNAL"),
+      value: primaryValue,
+      tone: "primary",
+    });
+
+    const secondaryValue = Math.min(82, Math.max(0, Math.round(gossip * 0.62 + signal * 0.18)));
+    if (progress > 22 || secondaryValue > 28) {
+      const secondaryLabel = habitat === "FORÊT" ? "PASSEREAU POSSIBLE" : gossip > 55 ? "PIGEON SUSPECT" : "ÉCHO SECONDAIRE";
+      rows.push({ label: secondaryLabel, value: Math.max(18, secondaryValue), tone: "secondary" });
+    }
+
+    const lowBandValue = Math.min(76, Math.max(0, Math.round(lowEnergy * 0.78)));
+    if (lowEnergy > 62 && signal > 10) {
+      rows.push({ label: "BASSE FRÉQ. / CANIDÉ", value: lowBandValue, tone: "warning" });
+    }
+
+    return rows.slice(0, 3);
+  }, [hasSignal, detectedLabel, progress, signal, gossip, lowEnergy, habitat]);
 
   return (
     <div
@@ -204,31 +231,31 @@ function LiveSignalDashboard({
       <div className="flex items-center justify-between mb-1.5">
         <div className="text-[9px] font-mono tracking-[0.32em] uppercase text-cyan-400/70">Signatures détectées</div>
         <div className="text-[8px] font-mono tracking-[0.22em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>
-          {active ? "LIVE" : "STANDBY"}
+          {active ? "LIVE" : "VEILLE"}
         </div>
       </div>
 
       <div className="space-y-1">
-        {speciesRows.map((row, index) => (
-          <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider">
-            <span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{
-                background: index === 0 ? "#00ff88" : index === 1 ? "#00d4ff" : "#ff8c00",
-                boxShadow: `0 0 5px ${index === 0 ? "#00ff88" : index === 1 ? "#00d4ff" : "#ff8c00"}`,
-              }}
-            />
-            <span className="text-gray-300 truncate uppercase">{row.label}</span>
-            <LedBar value={row.value} />
-            <span className="text-cyan-300 text-right">{row.value}%</span>
-          </div>
-        ))}
+        {signatureRows.map(row => {
+          const diode = row.tone === "primary" ? "#00ff88" : row.tone === "secondary" ? "#00d4ff" : row.tone === "warning" ? "#ff8c00" : "#ffffff33";
+          return (
+            <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: diode, boxShadow: row.pending ? "none" : `0 0 5px ${diode}` }}
+              />
+              <span className={`truncate uppercase ${row.pending ? "text-gray-600" : "text-gray-300"}`}>{row.label}</span>
+              <LedBar value={row.value} pending={row.pending} />
+              <span className={`text-right ${row.pending ? "text-gray-600" : "text-cyan-300"}`}>{row.pending ? "--" : `${row.value}%`}</span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="mt-2 pt-1.5 border-t border-white/5 grid grid-cols-3 gap-2 text-[8px] font-mono tracking-wider text-gray-500">
         <div>Signal <span className="text-cyan-300">{signal}%</span></div>
         <div>Amb. <span className="text-orange-300">{habitat}</span></div>
-        <div>Bipède <span className="text-purple-300">{Math.min(99, Math.max(10, Math.round(signal * 0.55 + gossip * 0.25 + 18)))}%</span></div>
+        <div>Bipède <span className="text-purple-300">{hasSignal ? Math.min(99, Math.max(8, Math.round(signal * 0.55 + gossip * 0.25 + 18))) : "--"}</span>{hasSignal ? "%" : ""}</div>
       </div>
     </div>
   );
@@ -265,7 +292,7 @@ export default function Home() {
       <Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} />
 
       <main
-        className="relative flex-1 flex flex-col gap-2.5 p-3 sm:p-4 max-w-4xl mx-auto w-full"
+        className="relative flex-1 flex flex-col gap-2 p-3 sm:p-4 max-w-4xl mx-auto w-full"
         style={{ zIndex: 2, paddingBottom: "calc(13rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <LiveSignalDashboard
@@ -280,15 +307,15 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "58px" }}>
-            <div className="text-[8px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1">{t.freq}</div>
-            <div style={{ height: "32px" }}>
+          <div className="rounded border p-1.5 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "44px" }}>
+            <div className="text-[7px] font-mono text-cyan-400/40 tracking-[0.28em] mb-0.5">{t.freq}</div>
+            <div style={{ height: "23px" }}>
               <Waveform data={waveformData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
-          <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "58px" }}>
-            <div className="text-[8px] font-mono text-orange-400/40 tracking-[0.3em] mb-1">{t.environment.toUpperCase()}</div>
-            <div style={{ height: "32px" }}>
+          <div className="rounded border p-1.5 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "44px" }}>
+            <div className="text-[7px] font-mono text-orange-400/40 tracking-[0.28em] mb-0.5">{t.environment.toUpperCase()}</div>
+            <div style={{ height: "23px" }}>
               <Spectrogram data={spectrogramData} active={state.isListening || state.isAnalyzing} />
             </div>
           </div>
@@ -296,7 +323,7 @@ export default function Home() {
 
         {detectedLabel && state.isListening && (
           <div className="flex justify-center">
-            <div className="text-[9px] font-mono tracking-[0.3em] uppercase px-3 py-1 rounded border animate-pulse" style={{ color: "#00d4ff", borderColor: "#00d4ff33", background: "rgba(0,212,255,0.06)" }}>
+            <div className="text-[8px] font-mono tracking-[0.26em] uppercase px-2.5 py-0.5 rounded border animate-pulse" style={{ color: "#00d4ff", borderColor: "#00d4ff33", background: "rgba(0,212,255,0.06)" }}>
               {t.detected} : {detectedLabel}
             </div>
           </div>
