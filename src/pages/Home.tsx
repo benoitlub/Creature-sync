@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAudioAnalysis } from "../hooks/useAudioAnalysis";
 import { ParticleField } from "../components/ParticleField";
-import { Waveform } from "../components/Waveform";
-import { Spectrogram } from "../components/Spectrogram";
 import { MicButton } from "../components/MicButton";
 import { TranslationCard } from "../components/TranslationCard";
 import { UI_LABELS, type Lang } from "../data/translations";
@@ -13,7 +11,6 @@ import {
   BiologicalPanel,
   NeuralPanel,
   EnvironmentPanel,
-  SignalQualityPanel,
 } from "../components/AnalysisPanels";
 
 function ScannerLines() {
@@ -177,6 +174,16 @@ type SignatureRow = {
   pending?: boolean;
 };
 
+function inferHabitat(audioFeatures: any, active: boolean) {
+  if (!active && !audioFeatures) return "---";
+  return (audioFeatures?.spectralCentroid ?? 0) > 1800 && (audioFeatures?.lowEnergyRatio ?? 0.3) < 0.5 ? "FORÊT" : "MIXTE";
+}
+
+function getSignalPercent(audioFeatures: any, progress: number) {
+  const rawSignal = Math.round((audioFeatures?.rms ?? 0) * 420);
+  return Math.min(99, Math.max(0, rawSignal || progress || 0));
+}
+
 function LiveSignalDashboard({
   active,
   audioFeatures,
@@ -188,12 +195,11 @@ function LiveSignalDashboard({
   detectedLabel: string | null;
   progress: number;
 }) {
-  const rawSignal = Math.round((audioFeatures?.rms ?? 0) * 420);
-  const signal = Math.min(99, Math.max(0, rawSignal));
+  const signal = getSignalPercent(audioFeatures, progress);
   const sharpness = Math.min(99, Math.max(0, Math.round((audioFeatures?.zcr ?? 0) * 420)));
   const gossip = Math.min(99, Math.max(0, Math.round((audioFeatures?.flatness ?? 0) * 180 + sharpness * 0.45)));
   const lowEnergy = Math.min(99, Math.max(0, Math.round((audioFeatures?.lowEnergyRatio ?? 0) * 95)));
-  const habitat = (audioFeatures?.spectralCentroid ?? 0) > 1800 && (audioFeatures?.lowEnergyRatio ?? 0.3) < 0.5 ? "FORÊT" : active ? "MIXTE" : "---";
+  const habitat = inferHabitat(audioFeatures, active);
   const hasSignal = active || progress > 1 || Boolean(detectedLabel);
 
   const signatureRows = useMemo<SignatureRow[]>(() => {
@@ -240,22 +246,13 @@ function LiveSignalDashboard({
           const diode = row.tone === "primary" ? "#00ff88" : row.tone === "secondary" ? "#00d4ff" : row.tone === "warning" ? "#ff8c00" : "#ffffff33";
           return (
             <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: diode, boxShadow: row.pending ? "none" : `0 0 5px ${diode}` }}
-              />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: diode, boxShadow: row.pending ? "none" : `0 0 5px ${diode}` }} />
               <span className={`truncate uppercase ${row.pending ? "text-gray-600" : "text-gray-300"}`}>{row.label}</span>
               <LedBar value={row.value} pending={row.pending} />
               <span className={`text-right ${row.pending ? "text-gray-600" : "text-cyan-300"}`}>{row.pending ? "--" : `${row.value}%`}</span>
             </div>
           );
         })}
-      </div>
-
-      <div className="mt-2 pt-1.5 border-t border-white/5 grid grid-cols-3 gap-2 text-[8px] font-mono tracking-wider text-gray-500">
-        <div>Signal <span className="text-cyan-300">{signal}%</span></div>
-        <div>Amb. <span className="text-orange-300">{habitat}</span></div>
-        <div>Bipède <span className="text-purple-300">{hasSignal ? Math.min(99, Math.max(8, Math.round(signal * 0.55 + gossip * 0.25 + 18))) : "--"}</span>{hasSignal ? "%" : ""}</div>
       </div>
     </div>
   );
@@ -265,8 +262,6 @@ export default function Home() {
   const {
     state,
     crypticMessage,
-    waveformData,
-    spectrogramData,
     audioFeatures,
     detectedLabel,
     lang,
@@ -275,7 +270,10 @@ export default function Home() {
     stopListening,
     reset,
   } = useAudioAnalysis();
-  const t = UI_LABELS[lang];
+
+  const activeAudioFeatures = audioFeatures || state.audioFeatures;
+  const micSignal = state.isComplete ? state.signalQuality : getSignalPercent(activeAudioFeatures, state.scanProgress);
+  const micHabitat = state.environmentalScan ? state.environmentalScan.split("—")[0].replace("AMBIANCE :", "").trim() : inferHabitat(activeAudioFeatures, state.isListening || state.isAnalyzing);
 
   return (
     <div
@@ -295,9 +293,14 @@ export default function Home() {
         className="relative flex-1 flex flex-col gap-2 p-3 sm:p-4 max-w-4xl mx-auto w-full"
         style={{ zIndex: 2, paddingBottom: "calc(13rem + env(safe-area-inset-bottom, 0px))" }}
       >
+        <div className="grid grid-cols-2 gap-2">
+          <SpeciesPanel state={state} lang={lang} />
+          <EmotionalPanel state={state} lang={lang} />
+        </div>
+
         <LiveSignalDashboard
           active={state.isListening || state.isAnalyzing}
-          audioFeatures={audioFeatures || state.audioFeatures}
+          audioFeatures={activeAudioFeatures}
           detectedLabel={detectedLabel || state.detectedSpecies}
           progress={state.scanProgress}
         />
@@ -306,28 +309,14 @@ export default function Home() {
           <CrypticTicker message={crypticMessage} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border p-1.5 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.7)", height: "44px" }}>
-            <div className="text-[7px] font-mono text-cyan-400/40 tracking-[0.28em] mb-0.5">{t.freq}</div>
-            <div style={{ height: "23px" }}>
-              <Waveform data={waveformData} active={state.isListening || state.isAnalyzing} />
-            </div>
-          </div>
-          <div className="rounded border p-1.5 backdrop-blur-sm" style={{ borderColor: "#ff8c0022", background: "rgba(0,10,25,0.7)", height: "44px" }}>
-            <div className="text-[7px] font-mono text-orange-400/40 tracking-[0.28em] mb-0.5">{t.environment.toUpperCase()}</div>
-            <div style={{ height: "23px" }}>
-              <Spectrogram data={spectrogramData} active={state.isListening || state.isAnalyzing} />
-            </div>
-          </div>
-        </div>
+        <TranslationCard state={state} lang={lang} />
 
-        {detectedLabel && state.isListening && (
-          <div className="flex justify-center">
-            <div className="text-[8px] font-mono tracking-[0.26em] uppercase px-2.5 py-0.5 rounded border animate-pulse" style={{ color: "#00d4ff", borderColor: "#00d4ff33", background: "rgba(0,212,255,0.06)" }}>
-              {t.detected} : {detectedLabel}
-            </div>
-          </div>
-        )}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <ThreatPanel state={state} lang={lang} />
+          <BiologicalPanel state={state} lang={lang} />
+          <NeuralPanel state={state} lang={lang} />
+          <EnvironmentPanel state={state} lang={lang} />
+        </div>
 
         <MicButton
           isListening={state.isListening}
@@ -337,38 +326,9 @@ export default function Home() {
           onStop={stopListening}
           onReset={reset}
           lang={lang}
+          signalQuality={micSignal}
+          habitat={micHabitat}
         />
-
-        {(state.isAnalyzing || state.isListening) && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-[8px] font-mono text-gray-500 tracking-wider">
-              <span>{state.isListening ? "CAPTATION CONTINUE" : t.bioacoustic}</span>
-              <span>{Math.floor(state.scanProgress)}%</span>
-            </div>
-            <div className="h-0.5 rounded-full bg-white/5 overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-150" style={{ width: `${state.scanProgress}%`, background: "linear-gradient(90deg, #00d4ff88, #ff8c00)", boxShadow: "0 0 8px #ff8c00" }} />
-            </div>
-          </div>
-        )}
-
-        <TranslationCard state={state} lang={lang} />
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <SpeciesPanel state={state} lang={lang} />
-          <EmotionalPanel state={state} lang={lang} />
-          <ThreatPanel state={state} lang={lang} />
-          <BiologicalPanel state={state} lang={lang} />
-          <NeuralPanel state={state} lang={lang} />
-          <EnvironmentPanel state={state} lang={lang} />
-        </div>
-
-        <SignalQualityPanel state={state} scanProgress={state.scanProgress} lang={lang} />
-
-        <div className="flex justify-between items-center text-[7px] font-mono text-gray-700 tracking-widest py-1">
-          <span>{t.footer1}</span>
-          <span>{t.footer2}</span>
-          <span>{t.footer3}</span>
-        </div>
       </main>
     </div>
   );
