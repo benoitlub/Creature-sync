@@ -157,6 +157,28 @@ function getSignalPercent(audioFeatures: any, progress: number) {
   return Math.min(99, Math.max(0, rawSignal || progress || 0));
 }
 
+function isPigeonLike(audioFeatures: any) {
+  if (!audioFeatures) return false;
+  return (
+    audioFeatures.dominantFreq < 950 &&
+    audioFeatures.spectralCentroid < 1900 &&
+    audioFeatures.lowEnergyRatio > 0.45 &&
+    audioFeatures.periodicity > 0.22 &&
+    audioFeatures.zcr < 0.12
+  );
+}
+
+function getSecondarySignatureLabel(audioFeatures: any, habitat: string, detectedLabel: string | null, gossip: number, signal: number) {
+  const label = (detectedLabel || "").toLowerCase();
+  const primaryIsPigeon = label.includes("pigeon") || label.includes("columba");
+
+  if (primaryIsPigeon || isPigeonLike(audioFeatures)) return "ROUCOULEMENT POSSIBLE";
+  if (audioFeatures?.spectralCentroid > 2800 && audioFeatures?.zcr > 0.08 && audioFeatures?.flatness > 0.12) return "PSITTACIDÉ POSSIBLE";
+  if (habitat === "FORÊT") return "PASSEREAU POSSIBLE";
+  if (gossip > 62 && signal > 10) return "SIGNAL BAVARD";
+  return "ÉCHO SECONDAIRE";
+}
+
 function LiveSignalDashboard({ active, audioFeatures, detectedLabel, progress }: { active: boolean; audioFeatures: any; detectedLabel: string | null; progress: number }) {
   const signal = getSignalPercent(audioFeatures, progress);
   const sharpness = Math.min(99, Math.max(0, Math.round((audioFeatures?.zcr ?? 0) * 420)));
@@ -173,13 +195,19 @@ function LiveSignalDashboard({ active, audioFeatures, detectedLabel, progress }:
     rows.push({ label: detectedLabel || (progress > 24 ? "SIGNATURE AVIAIRE" : "ACQUISITION DU SIGNAL"), value: primaryValue, tone: "primary" });
 
     const secondaryValue = Math.min(82, Math.max(0, Math.round(gossip * 0.62 + signal * 0.18)));
-    if (progress > 22 || secondaryValue > 28) rows.push({ label: habitat === "FORÊT" ? "PASSEREAU POSSIBLE" : gossip > 55 ? "PIGEON SUSPECT" : "ÉCHO SECONDAIRE", value: Math.max(18, secondaryValue), tone: "secondary" });
+    if (progress > 22 || secondaryValue > 28) {
+      rows.push({
+        label: getSecondarySignatureLabel(audioFeatures, habitat, detectedLabel, gossip, signal),
+        value: Math.max(18, secondaryValue),
+        tone: "secondary",
+      });
+    }
 
     const lowBandValue = Math.min(76, Math.max(0, Math.round(lowEnergy * 0.78)));
     if (lowEnergy > 62 && signal > 10) rows.push({ label: "BASSE FRÉQ. / CANIDÉ", value: lowBandValue, tone: "warning" });
 
     return rows.slice(0, 3);
-  }, [hasSignal, detectedLabel, progress, signal, gossip, lowEnergy, habitat]);
+  }, [hasSignal, detectedLabel, progress, signal, gossip, lowEnergy, habitat, audioFeatures]);
 
   return (
     <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: active ? "#00d4ff44" : "#ffffff11", background: "rgba(0,10,25,0.68)" }}>
