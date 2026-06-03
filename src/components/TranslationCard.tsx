@@ -28,6 +28,44 @@ const ANALYSIS_STEPS: Record<Lang, string[]> = {
   ],
 };
 
+const LIVE_PREFIX: Record<Lang, string> = {
+  fr: "fragment capté",
+  en: "captured fragment",
+  es: "fragmento captado",
+};
+
+function splitWords(text: string) {
+  return text
+    .replace(/[“”"«»]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+}
+
+function sentenceFragments(text: string, progress: number, lang: Lang) {
+  const words = splitWords(text);
+  if (words.length === 0) return "";
+
+  const firstSize = Math.min(5, Math.max(2, Math.ceil(words.length * 0.3)));
+  const midStart = Math.max(0, Math.floor(words.length * 0.35));
+  const midEnd = Math.min(words.length, midStart + 5);
+  const endSize = Math.min(6, Math.max(3, Math.ceil(words.length * 0.35)));
+
+  const fragments = [
+    words.slice(0, firstSize).join(" "),
+    words.slice(midStart, midEnd).join(" "),
+    words.slice(Math.max(0, words.length - endSize)).join(" "),
+  ].filter(Boolean);
+
+  const visibleCount = progress < 32 ? 1 : progress < 68 ? 2 : 3;
+
+  return fragments
+    .slice(0, visibleCount)
+    .map((fragment, index) => `// ${LIVE_PREFIX[lang]} ${index + 1}: …${fragment}…`)
+    .join("\n");
+}
+
 export function TranslationCard({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
   const [displayed, setDisplayed] = useState("");
@@ -48,9 +86,10 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
       return;
     }
 
-    // En live, le texte doit apparaître tout de suite. En final, on garde l'effet machine à écrire.
+    // Pendant la captation, on ne montre que des fragments courts.
+    // La phrase complète est réservée au STOP, quand le résultat est stabilisé.
     if (state.isListening) {
-      setDisplayed(state.translation);
+      setDisplayed(sentenceFragments(state.translation, state.scanProgress, lang));
       return;
     }
 
@@ -78,7 +117,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
       clearTimeout(delay);
       if (interval) clearInterval(interval);
     };
-  }, [state.translation, state.isComplete, state.isListening, hasTranslation]);
+  }, [state.translation, state.isComplete, state.isListening, state.scanProgress, lang, hasTranslation]);
 
   useEffect(() => {
     const interval = setInterval(() => setCursor(c => !c), 500);
@@ -86,7 +125,9 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
   }, []);
 
   const accentColor = state.isPoetic ? "#9b59ff" : isLive ? "#00ff88" : "#00d4ff";
-  const labelText = isLive ? "TRADUCTION LIVE // CANAL OUVERT" : state.isPoetic ? t.poetry : t.translation;
+  const labelText = isLive
+    ? lang === "fr" ? "FRAGMENTS INTERCEPTÉS // CANAL OUVERT" : lang === "en" ? "INTERCEPTED FRAGMENTS // OPEN CHANNEL" : "FRAGMENTOS INTERCEPTADOS // CANAL ABIERTO"
+    : state.isPoetic ? t.poetry : t.translation;
   const borderActive = isFinal || isLive;
 
   return (
@@ -172,7 +213,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
 
       {(isLive || isFinal) && (
         <div
-          className="font-mono text-sm leading-relaxed"
+          className="font-mono text-sm leading-relaxed whitespace-pre-line"
           style={{
             color: state.isPoetic ? "#c4a8ff" : isLive ? "#e9fff4" : "#e2f5ff",
             textShadow: state.isPoetic ? "0 0 12px #9b59ff44" : isLive ? "0 0 10px #00ff8822" : "none",
@@ -185,11 +226,11 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
               ⚠ Transmission interceptée...
             </span>
           )}
-          {state.isPoetic && displayed && <span className="text-purple-400/60 mr-1">&ldquo;</span>}
+          {state.isPoetic && displayed && isFinal && <span className="text-purple-400/60 mr-1">&ldquo;</span>}
           {displayed}
-          {cursor && displayed.length < state.translation.length && <span style={{ color: accentColor }}>█</span>}
+          {cursor && isFinal && displayed.length < state.translation.length && <span style={{ color: accentColor }}>█</span>}
           {isLive && cursor && <span style={{ color: accentColor }}> ▌</span>}
-          {state.isPoetic && displayed.length === state.translation.length && <span className="text-purple-400/60 ml-1">&rdquo;</span>}
+          {state.isPoetic && isFinal && displayed.length === state.translation.length && <span className="text-purple-400/60 ml-1">&rdquo;</span>}
         </div>
       )}
 
@@ -206,7 +247,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
           )}
           <span className="text-[8px] font-mono text-gray-600 tracking-wider">{t.confidence}: {state.confidence}%</span>
           <span className="text-[8px] font-mono text-gray-600 tracking-wider ml-auto">
-            {isLive ? "STREAMING" : t.institute + " // BLACKLACE-7"}
+            {isLive ? "FRAGMENT STREAM" : t.institute + " // BLACKLACE-7"}
           </span>
         </div>
       )}
