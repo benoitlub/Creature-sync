@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAudioAnalysis } from "../hooks/useAudioAnalysis";
 import { ParticleField } from "../components/ParticleField";
 import { MicButton } from "../components/MicButton";
 import { TranslationCard } from "../components/TranslationCard";
+import { SessionJournal } from "../components/SessionJournal";
 import { UI_LABELS, type Lang } from "../data/translations";
 import {
   SpeciesPanel,
@@ -12,6 +13,11 @@ import {
   NeuralPanel,
   EnvironmentPanel,
 } from "../components/AnalysisPanels";
+import {
+  createSessionEntryFromState,
+  saveSessionEntry,
+  type SessionJournalEntry,
+} from "../utils/sessionJournal";
 
 function ScannerLines() {
   return (
@@ -237,6 +243,20 @@ export default function Home() {
   const activeAudioFeatures = audioFeatures || state.audioFeatures;
   const micSignal = state.isComplete ? state.signalQuality : getSignalPercent(activeAudioFeatures, state.scanProgress);
   const micHabitat = state.environmentalScan ? state.environmentalScan.split("—")[0].replace("AMBIANCE :", "").trim() : inferHabitat(activeAudioFeatures, state.isListening || state.isAnalyzing);
+  const [latestEntry, setLatestEntry] = useState<SessionJournalEntry | null>(null);
+  const lastSavedTranslationRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!state.isComplete || !state.translation) return;
+    const signature = `${state.detectedSpecies || state.species?.name || "unknown"}-${state.translation}`;
+    if (lastSavedTranslationRef.current === signature) return;
+
+    const entry = createSessionEntryFromState(state, micHabitat);
+    if (!entry) return;
+    saveSessionEntry(entry);
+    setLatestEntry(entry);
+    lastSavedTranslationRef.current = signature;
+  }, [state.isComplete, state.translation, state.detectedSpecies, state.species, micHabitat, state]);
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden flex flex-col" style={{ background: "radial-gradient(ellipse at 20% 20%, rgba(0,40,80,0.4) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(20,0,40,0.3) 0%, transparent 60%), #02060f", fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace" }}>
@@ -252,6 +272,7 @@ export default function Home() {
         <LiveSignalDashboard active={state.isListening || state.isAnalyzing} audioFeatures={activeAudioFeatures} detectedLabel={detectedLabel || state.detectedSpecies} progress={state.scanProgress} />
         <div className="flex justify-center"><CrypticTicker message={crypticMessage} /></div>
         <TranslationCard state={state} lang={lang} />
+        <SessionJournal latestEntry={latestEntry} />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <ThreatPanel state={state} lang={lang} />
           <BiologicalPanel state={state} lang={lang} />
