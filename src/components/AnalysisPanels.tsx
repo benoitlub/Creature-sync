@@ -28,8 +28,13 @@ export function Panel({ className = "", children, label, accent = "#00d4ff" }: P
   );
 }
 
+function clampPercent(value: number, fallback = 0) {
+  const safe = Number.isFinite(value) ? value : fallback;
+  return Math.max(0, Math.min(100, Math.round(safe || fallback)));
+}
+
 function Bar({ value, color, label, sublabel }: { value: number; color: string; label: string; sublabel?: string }) {
-  const safeValue = Math.max(0, Math.min(100, Math.round(value || 0)));
+  const safeValue = clampPercent(value);
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-baseline">
@@ -38,7 +43,7 @@ function Bar({ value, color, label, sublabel }: { value: number; color: string; 
       </div>
       <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full transition-all duration-300"
           style={{
             width: `${safeValue}%`,
             background: `linear-gradient(90deg, ${color}88, ${color})`,
@@ -58,9 +63,25 @@ function isActive(state: AnalysisState) {
   return Boolean(state.isComplete || state.isListening || state.isAnalyzing || state.species || state.detectedSpecies);
 }
 
-function liveProgress(state: AnalysisState, fallback = 24) {
-  if (state.isComplete) return state.confidence || state.signalQuality || 80;
-  return Math.max(fallback, Math.min(96, state.scanProgress || fallback));
+function getLiveConfidence(state: AnalysisState) {
+  if (state.isComplete) return state.confidence || state.speciesConfidence || 80;
+  return clampPercent(state.speciesConfidence || state.confidence || (state.scanProgress * 0.72 + 18), 24);
+}
+
+function getLiveResonance(state: AnalysisState) {
+  if (state.isComplete) return state.neuralResonance || 80;
+  const f = state.audioFeatures;
+  if (state.neuralResonance) return clampPercent(state.neuralResonance);
+  if (!f) return clampPercent((state.scanProgress || 0) * 0.6 + 24);
+  return clampPercent((f.periodicity || 0) * 190 + (1 - (f.flatness || 0.35)) * 28 + (f.zcr || 0) * 140 + 18);
+}
+
+function getLiveClarity(state: AnalysisState) {
+  if (state.isComplete) return state.signalQuality || 82;
+  const f = state.audioFeatures;
+  if (state.signalQuality) return clampPercent(state.signalQuality);
+  if (!f) return clampPercent((state.scanProgress || 0) * 0.55 + 20);
+  return clampPercent((f.rms || 0) * 520 + (1 - (f.flatness || 0.4)) * 35 + Math.min(22, (f.spectralCentroid || 0) / 180));
 }
 
 function getPhaseLabel(state: AnalysisState, lang: Lang) {
@@ -76,7 +97,7 @@ export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang
   const active = isActive(state);
   const commonName = state.species?.scientificName?.[lang] || state.detectedSpecies || (state.isListening ? "Signature aviaire" : "");
   const latinName = state.species?.name || (state.isListening ? "Classification progressive" : "");
-  const confidence = state.isComplete ? state.confidence : liveProgress(state, state.speciesConfidence || 34);
+  const confidence = getLiveConfidence(state);
 
   return (
     <Panel label={t.species} accent="#00d4ff">
@@ -95,7 +116,7 @@ export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang
             </div>
           )}
           <div className="mt-2">
-            <Bar value={confidence} color="#00d4ff" label={t.confidence} sublabel={`${Math.round(confidence)}%`} />
+            <Bar value={confidence} color="#00d4ff" label={t.confidence} sublabel={`${confidence}%`} />
           </div>
         </div>
       ) : (
@@ -108,8 +129,8 @@ export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang
 export function EmotionalPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
   const active = isActive(state) && (state.emotionalState || state.isListening || state.isAnalyzing);
-  const resonance = state.isComplete ? state.neuralResonance : liveProgress(state, 28);
-  const clarity = state.isComplete ? state.signalQuality : Math.max(18, Math.min(92, resonance + 12));
+  const resonance = getLiveResonance(state);
+  const clarity = getLiveClarity(state);
 
   return (
     <Panel label={t.emotional} accent="#ff8c00">
@@ -118,8 +139,8 @@ export function EmotionalPanel({ state, lang }: { state: AnalysisState; lang: La
           <div className="text-[11px] font-mono text-orange-400 tracking-wider leading-relaxed">
             {state.emotionalState || (lang === "fr" ? "CALIBRAGE ÉMOTIONNEL" : "EMOTIONAL CALIBRATION")}
           </div>
-          <Bar value={resonance} color="#ff8c00" label={t.resonance} sublabel={`${Math.round(resonance)}%`} />
-          <Bar value={clarity} color="#ffcc00" label={t.clarity} sublabel={`${Math.round(clarity)}%`} />
+          <Bar value={resonance} color="#ff8c00" label={t.resonance} sublabel={`${resonance}%`} />
+          <Bar value={clarity} color="#ffcc00" label={t.clarity} sublabel={`${clarity}%`} />
         </div>
       ) : (
         <Placeholder text={state.isListening || state.isAnalyzing ? t.calibrating : t.offline} />
@@ -226,7 +247,7 @@ export function EnvironmentPanel({ state, lang }: { state: AnalysisState; lang: 
 export function SignalQualityPanel({ state, scanProgress, lang }: { state: AnalysisState; scanProgress: number; lang: Lang }) {
   const t = UI_LABELS[lang];
   const active = state.isListening || state.isAnalyzing || state.isComplete;
-  const signal = state.isComplete ? state.signalQuality : active ? Math.max(scanProgress, state.signalQuality || 18) : 0;
+  const signal = state.isComplete ? (state.signalQuality || 82) : active ? getLiveClarity(state) : 0;
   return (
     <Panel label={t.signal} accent="#00d4ff">
       <div className="space-y-2">
