@@ -7,6 +7,8 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
+const DONATION_LINE = "Aucun animal n’a été payé pendant cette traduction. Le laboratoire accepte les dons en miettes, en encouragements ou en euros.";
+
 function formatDate(value: string) {
   try {
     return new Date(value).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -24,10 +26,24 @@ function Metric({ label, value, suffix = "" }: { label: string; value?: number; 
   );
 }
 
+function buildShareText(entry: SessionJournalEntry) {
+  const place = entry.locationNote || entry.habitat || "lieu non précisé";
+  return [
+    "Creature Sync a intercepté :",
+    `${entry.speciesName} — ${entry.confidence}%`,
+    `“${entry.translation}”`,
+    `Lieu : ${place}`,
+    `Date : ${formatDate(entry.createdAt)}`,
+    "",
+    DONATION_LINE,
+  ].join("\n");
+}
+
 export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEntry | null }) {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<SessionJournalEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState("");
 
   useEffect(() => {
     setEntries(getSessionJournal());
@@ -53,6 +69,42 @@ export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEnt
     if (!ok) return;
     setEntries(clearSessionJournal());
     setSelectedId(null);
+  };
+
+  const shareSelected = async () => {
+    if (!selected) return;
+    const text = buildShareText(selected);
+    setShareStatus("");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Creature Sync — ${selected.speciesName}`,
+          text,
+        });
+        setShareStatus("Traduction partagée. Les pigeons nient toute implication.");
+        return;
+      }
+
+      await navigator.clipboard.writeText(text);
+      setShareStatus("Texte copié. Tu peux le coller où tu veux.");
+    } catch {
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareStatus("Partage annulé, mais texte copié dans le presse-papier.");
+      } catch {
+        setShareStatus("Partage impossible ici. Le laboratoire conserve la trace localement.");
+      }
+    }
+  };
+
+  const copyDonationLine = async () => {
+    try {
+      await navigator.clipboard.writeText(DONATION_LINE);
+      setShareStatus("Phrase de soutien copiée. Aucun animal ne confirmera cette transaction.");
+    } catch {
+      setShareStatus(DONATION_LINE);
+    }
   };
 
   return (
@@ -153,6 +205,20 @@ export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEnt
                   style={{ borderColor: "#ffffff18" }}
                 />
               </label>
+
+              <div className="rounded border p-2 space-y-1" style={{ borderColor: "#ff8c0022", background: "rgba(255,140,0,0.04)" }}>
+                <div className="text-[8px] font-mono tracking-[0.22em] uppercase text-orange-300/80">Soutenir le laboratoire</div>
+                <div className="text-[9px] font-mono text-orange-100/70 leading-relaxed">{DONATION_LINE}</div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={shareSelected} className="text-[8px] font-mono tracking-wider text-cyan-300 uppercase">
+                    Partager cette traduction
+                  </button>
+                  <button type="button" onClick={copyDonationLine} className="text-[8px] font-mono tracking-wider text-orange-300 uppercase">
+                    Copier l’appel à dons
+                  </button>
+                </div>
+                {shareStatus && <div className="text-[8px] font-mono text-green-300/70 tracking-wider pt-1">{shareStatus}</div>}
+              </div>
 
               <div className="flex justify-between gap-2 pt-1">
                 <button type="button" onClick={removeSelected} className="text-[8px] font-mono tracking-wider text-red-300/70 uppercase">
