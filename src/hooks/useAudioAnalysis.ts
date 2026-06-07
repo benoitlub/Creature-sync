@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   SPECIES,
   getCrypticMessages,
-  getRandomTranslation,
   extractAudioFeatures,
   type AnalysisState,
   type Lang,
   type AudioFeatures,
   type Species,
 } from "../data/animals";
+import { getEvolvingTranslation } from "../data/phraseBanks";
 import { FOREST_SPECIES } from "../data/forestSpecies";
 import { URBAN_BIRD_SPECIES } from "../data/urbanBirdSpecies";
 
@@ -23,6 +23,18 @@ const BIRD_IDS = new Set([
 const MAMMAL_IDS = new Set(["cat", "dog"]);
 
 type Habitat = "forest" | "urban" | "mixed" | "quiet";
+
+export type LiveCandidate = {
+  id: string;
+  name: string;
+  scientificName: string;
+  confidence: number;
+};
+
+const MIN_LIVE_RMS = 0.0025;
+const MIN_STABLE_SCORE = 0.28;
+const AMBIGUITY_MARGIN = 0.08;
+const LIVE_CANDIDATE_LIMIT = 4;
 
 function pickRandomSpecies(pool: Species[]): Species {
   return pool[Math.floor(Math.random() * pool.length)] || ALL_SPECIES[0] || SPECIES[0];
@@ -100,13 +112,42 @@ function classifyLocalSpecies(features: AudioFeatures): { species: Species; scor
     .sort((a, b) => b.score - a.score);
 }
 
-function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
+function scoreToConfidence(score: number, features: AudioFeatures | null): number {
+  if (!features || features.rms < MIN_LIVE_RMS) return 0;
+  const signalBonus = Math.min(12, features.rms * 70);
+  return Math.max(12, Math.min(92, Math.round(score * 86 + signalBonus)));
+}
+
+function getLiveSpeciesCandidates(features: AudioFeatures | null, lang: Lang): LiveCandidate[] {
+  if (!features || features.rms < MIN_LIVE_RMS) return [];
+
+  const scores = classifyLocalSpecies(features).slice(0, LIVE_CANDIDATE_LIMIT);
+  const best = scores[0]?.score ?? 0;
+  const second = scores[1]?.score ?? 0;
+  const ambiguousPenalty = best - second < AMBIGUITY_MARGIN ? 10 : 0;
+
+  return scores.map(({ species, score }, index) => ({
+    id: species.id,
+    name: species.scientificName[lang] || species.name,
+    scientificName: species.name,
+    confidence: Math.max(8, scoreToConfidence(score, features) - (index === 0 ? ambiguousPenalty : 0)),
+  }));
+}
+
+function getBestLiveCandidate(features: AudioFeatures | null): { species: Species; score: number; ambiguous: boolean } {
   const birds = ALL_SPECIES.filter((species) => BIRD_IDS.has(species.id));
-  if (!features || features.rms < 0.004) return pickRandomSpecies(birds.filter(s => !PIGEON_IDS.has(s.id)));
+  if (!features || features.rms < MIN_LIVE_RMS) {
+    return {
+      species: pickRandomSpecies(birds.filter(s => !PIGEON_IDS.has(s.id))),
+      score: 0,
+      ambiguous: true,
+    };
+  }
 
   const scores = classifyLocalSpecies(features);
   const bestBird = scores.find((entry) => BIRD_IDS.has(entry.species.id));
   const bestMammal = scores.find((entry) => MAMMAL_IDS.has(entry.species.id));
+  const best = bestBird || scores[0];
 
   let birdLikelihood = 0;
   if (features.dominantFreq >= 650) birdLikelihood += 1;
@@ -121,11 +162,23 @@ function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
   if (features.dominantFreq <= 650 && features.lowEnergyRatio >= 0.55) mammalLikelihood += 1;
   if (bestMammal && bestMammal.score >= 0.68) mammalLikelihood += 2;
 
-  if (bestBird && (birdLikelihood >= 2 || bestBird.score >= 0.32) && mammalLikelihood < 3) return bestBird.species;
+  const secondScore = scores[1]?.score ?? 0;
+  const ambiguous = !best || best.score < MIN_STABLE_SCORE || Math.abs((best?.score ?? 0) - secondScore) < AMBIGUITY_MARGIN;
 
-  return pickRandomSpecies(birds.filter(s => !PIGEON_IDS.has(s.id)));
+  if (bestBird && (birdLikelihood >= 2 || bestBird.score >= MIN_STABLE_SCORE) && mammalLikelihood < 3) {
+    return { species: bestBird.species, score: bestBird.score, ambiguous };
+  }
+
+  return {
+    species: best?.species || pickRandomSpecies(birds.filter(s => !PIGEON_IDS.has(s.id))),
+    score: best?.score ?? 0,
+    ambiguous: true,
+  };
 }
 
+function getBirdNetLiteSpecies(features: AudioFeatures | null): Species {
+  return getBestLiveCandidate(features).species;
+}
 function getHabitatScan(features: AudioFeatures | null, lang: Lang): string {
   const habitat = inferHabitat(features);
   const labels = {
@@ -167,6 +220,7 @@ export function useAudioAnalysis() {
   const [spectrogramData, setSpectrogramData] = useState<number[][]>([]);
   const [audioFeatures, setAudioFeatures] = useState<AudioFeatures | null>(null);
   const [detectedLabel, setDetectedLabel] = useState<string | null>(null);
+  const [liveCandidates, setLiveCandidates] = useState<LiveCandidate[]>([]);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -222,7 +276,7 @@ export function useAudioAnalysis() {
   }, [lang]);
 
   const buildReading = useCallback((species: Species, features: AudioFeatures | null, complete: boolean, confidence?: number) => {
-    const { text, isPoetic } = getRandomTranslation(species, lang);
+    const { text, isPoetic } = getEvolvingTranslation(species, lang);
     const emotionalIdx = Math.floor(Math.random() * species.emotionalStates[lang].length);
     const threatIdx = Math.floor(Math.random() * species.threatLevels.length);
     const intentIdx = Math.floor(Math.random() * species.biologicalIntents[lang].length);
@@ -246,19 +300,36 @@ export function useAudioAnalysis() {
   }, [lang]);
 
   const publishLiveReading = useCallback((features: AudioFeatures | null, progress: number) => {
-    const species = getBirdNetLiteSpecies(features);
-    const confidence = Math.floor(Math.min(88, Math.max(34, progress * 0.75 + Math.random() * 16)));
-    setDetectedLabel(species.scientificName[lang] || species.name);
-    setState(s => ({ ...s, ...buildReading(species, features, false, confidence), isListening: true, isAnalyzing: false, scanProgress: Math.max(s.scanProgress, progress) }));
+    const candidates = getLiveSpeciesCandidates(features, lang);
+    const best = getBestLiveCandidate(features);
+    const confidence = candidates[0]?.confidence ?? Math.floor(Math.min(55, Math.max(18, progress * 0.45)));
+
+    setLiveCandidates(candidates);
+    setDetectedLabel(candidates[0]?.name || null);
+    setState(s => ({
+      ...s,
+      ...buildReading(best.species, features, false, confidence),
+      isListening: true,
+      isAnalyzing: false,
+      scanProgress: Math.max(s.scanProgress, progress),
+    }));
   }, [buildReading, lang]);
 
   const finalizeReading = useCallback((finalFeatures: AudioFeatures | null) => {
-    const species = getBirdNetLiteSpecies(finalFeatures);
-    const topScore = finalFeatures ? (classifyLocalSpecies(finalFeatures)[0]?.score ?? 0.6) : 0.55;
-    const confidence = Math.floor(Math.min(88, Math.max(48, topScore * 82 + Math.random() * 8)));
+    const candidates = getLiveSpeciesCandidates(finalFeatures, lang);
+    const best = getBestLiveCandidate(finalFeatures);
+    const confidence = candidates[0]?.confidence ?? scoreToConfidence(best.score, finalFeatures);
+
+    setLiveCandidates(candidates);
     setDetectedLabel(null);
-    setState(s => ({ ...s, ...buildReading(species, finalFeatures, true, confidence), isListening: false, isAnalyzing: false, scanProgress: 100 }));
-  }, [buildReading]);
+    setState(s => ({
+      ...s,
+      ...buildReading(best.species, finalFeatures, true, best.ambiguous ? Math.min(confidence, 62) : confidence),
+      isListening: false,
+      isAnalyzing: false,
+      scanProgress: 100,
+    }));
+  }, [buildReading, lang]);
 
   const startListening = useCallback(async () => {
     cancelAnimationFrame(animFrameRef.current);
@@ -273,6 +344,7 @@ export function useAudioAnalysis() {
     setSpectrogramData([]);
     setAudioFeatures(null);
     setDetectedLabel(null);
+    setLiveCandidates([]);
     rotateCrypticMessage();
     glitchTimerRef.current = setTimeout(triggerGlitch, 2000 + Math.random() * 3000);
 
@@ -302,14 +374,14 @@ export function useAudioAnalysis() {
         const feats = extractAudioFeatures(analyser, ctx);
         setAudioFeatures(feats);
         frames++;
-        if (feats.rms > 0.006) {
+        if (feats.rms > MIN_LIVE_RMS || frames % 8 === 0) {
           accumulatedFeaturesRef.current.push(feats);
           if (accumulatedFeaturesRef.current.length > 180) accumulatedFeaturesRef.current = accumulatedFeaturesRef.current.slice(-180);
         }
-        const progress = Math.min(96, accumulatedFeaturesRef.current.length * 2 + Math.random() * 2);
+        const progress = Math.min(96, frames * 0.55 + accumulatedFeaturesRef.current.length * 1.25 + Math.min(18, feats.rms * 360) + Math.random() * 1.5);
         const avg = getAverageFeatures(accumulatedFeaturesRef.current) || feats;
         setState(s => ({ ...s, scanProgress: Math.max(s.scanProgress, progress), audioFeatures: avg }));
-        if (frames % 10 === 0 && accumulatedFeaturesRef.current.length > 2) publishLiveReading(avg, progress);
+        if (frames % 6 === 0 && (accumulatedFeaturesRef.current.length > 0 || progress > 8)) publishLiveReading(avg, progress);
       }, 100);
     }
   }, [animateWaveform, rotateCrypticMessage, triggerGlitch, publishLiveReading]);
@@ -330,6 +402,7 @@ export function useAudioAnalysis() {
     else {
       setState(s => ({ ...s, isListening: false, isAnalyzing: false, isComplete: false }));
       setDetectedLabel(null);
+      setLiveCandidates([]);
     }
   }, [finalizeReading]);
 
@@ -349,6 +422,7 @@ export function useAudioAnalysis() {
     setSpectrogramData([]);
     setAudioFeatures(null);
     setDetectedLabel(null);
+    setLiveCandidates([]);
     setState(INITIAL_STATE);
     setCrypticMessage("");
   }, []);
@@ -363,5 +437,5 @@ export function useAudioAnalysis() {
     audioCtxRef.current?.close();
   }, []);
 
-  return { state, micPermission, crypticMessage, waveformData, spectrogramData, audioFeatures, detectedLabel, lang, setLang, startListening, stopListening, reset };
+  return { state, micPermission, crypticMessage, waveformData, spectrogramData, audioFeatures, detectedLabel, liveCandidates, lang, setLang, startListening, stopListening, reset };
 }
