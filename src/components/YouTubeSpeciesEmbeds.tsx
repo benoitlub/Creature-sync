@@ -29,28 +29,22 @@ export function YouTubeSpeciesEmbeds({ item }: { item: SpeciesCardItem }) {
   return (
     <div className="rounded border p-2" style={{ borderColor: "rgba(255,80,80,0.20)", background: "rgba(255,80,80,0.035)" }}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[8px] font-mono uppercase tracking-[0.22em] text-red-200/85">Chants / médias</span>
+        <span className="text-[8px] font-mono uppercase tracking-[0.22em] text-red-200/85">Écoute / chant</span>
         <a href={`https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noreferrer" className="text-[7px] font-mono uppercase tracking-wider text-red-100/45">recherche</a>
       </div>
 
       {ids.length === 0 ? (
         <a href={`https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noreferrer" className="block rounded border px-2 py-3 text-center text-[9px] font-mono uppercase tracking-[0.18em] text-red-100/70" style={{ borderColor: "rgba(255,80,80,0.22)" }}>
-          Ouvrir les meilleurs résultats YouTube
+          Ouvrir le chant sur YouTube
         </a>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {ids.slice(0, 2).map(id => (
-            <iframe
-              key={id}
-              className="aspect-video w-full rounded border border-red-200/15"
-              src={`https://www.youtube-nocookie.com/embed/${id}`}
-              title={`Chant ${item.label}`}
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          ))}
-        </div>
+        <iframe
+          className="h-24 w-full rounded border border-red-200/15 sm:h-28"
+          src={`https://www.youtube-nocookie.com/embed/${ids[0]}`}
+          title={`Chant ${item.label}`}
+          loading="lazy"
+          allowFullScreen
+        />
       )}
     </div>
   );
