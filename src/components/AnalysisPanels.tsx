@@ -86,38 +86,76 @@ function getLiveClarity(state: AnalysisState) {
 
 function getPhaseLabel(state: AnalysisState, lang: Lang) {
   const p = state.scanProgress || 0;
-  if (state.isComplete) return lang === "fr" ? "CONFIRMÉ" : "CONFIRMED";
-  if (p < 25) return lang === "fr" ? "SIGNAL" : "SIGNAL";
-  if (p < 55) return lang === "fr" ? "PROBABLE" : "LIKELY";
-  return lang === "fr" ? "EN COURS" : "IN PROGRESS";
+  if (state.isComplete) return lang === "fr" ? "CONFIRMÉ" : lang === "es" ? "CONFIRMADO" : "CONFIRMED";
+  if (p < 25) return "SIGNAL";
+  if (p < 55) return lang === "fr" ? "PROBABLE" : lang === "es" ? "PROBABLE" : "LIKELY";
+  return lang === "fr" ? "EN COURS" : lang === "es" ? "EN CURSO" : "IN PROGRESS";
+}
+
+function getAnimalIcon(state: AnalysisState, commonName: string, latinName: string) {
+  const raw = `${state.species?.id || ""} ${commonName} ${latinName}`.toLowerCase();
+  if (raw.includes("owl") || raw.includes("chouette") || raw.includes("hibou") || raw.includes("strix")) return "🦉";
+  if (raw.includes("duck") || raw.includes("canard") || raw.includes("anas")) return "🦆";
+  if (raw.includes("cat") || raw.includes("chat") || raw.includes("felis")) return "🐈";
+  if (raw.includes("dog") || raw.includes("chien") || raw.includes("canis")) return "🐕";
+  if (raw.includes("parakeet") || raw.includes("perruche") || raw.includes("psittacula")) return "🦜";
+  if (raw.includes("magpie") || raw.includes("pie") || raw.includes("pica")) return "🐦‍⬛";
+  if (raw.includes("crow") || raw.includes("corbeau") || raw.includes("corneille") || raw.includes("corvus")) return "🐦‍⬛";
+  if (raw.includes("pigeon") || raw.includes("columba")) return "🕊️";
+  if (raw.includes("blackbird") || raw.includes("merle") || raw.includes("turdus")) return "🐦‍⬛";
+  if (raw.includes("robin") || raw.includes("rouge-gorge") || raw.includes("erithacus")) return "🐦";
+  if (raw.includes("tit") || raw.includes("mésange") || raw.includes("parus") || raw.includes("cyanistes")) return "🐤";
+  if (raw.includes("wren") || raw.includes("troglodyte")) return "🐥";
+  if (raw.includes("jay") || raw.includes("geai") || raw.includes("garrulus")) return "🐦‍⬛";
+  return state.species?.emoji || "🐾";
+}
+
+function AnimalBadge({ state, commonName, latinName, confidence }: { state: AnalysisState; commonName: string; latinName: string; confidence: number }) {
+  const icon = getAnimalIcon(state, commonName, latinName);
+  return (
+    <div
+      className="ml-2 flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border text-center"
+      style={{
+        borderColor: "rgba(0,212,255,0.32)",
+        background: "radial-gradient(circle at 50% 28%, rgba(0,212,255,0.14), rgba(0,10,25,0.70))",
+        boxShadow: "inset 0 0 18px rgba(0,212,255,0.08), 0 0 18px rgba(0,212,255,0.08)",
+      }}
+    >
+      <div className="text-4xl leading-none" aria-hidden="true">{icon}</div>
+      <div className="mt-1 text-[8px] font-mono tracking-[0.18em] text-cyan-200/70">{confidence}%</div>
+    </div>
+  );
 }
 
 export function SpeciesPanel({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
   const active = isActive(state);
-  const commonName = state.species?.scientificName?.[lang] || state.detectedSpecies || (state.isListening ? "Signature aviaire" : "");
-  const latinName = state.species?.name || (state.isListening ? "Classification progressive" : "");
+  const commonName = state.species?.scientificName?.[lang] || state.detectedSpecies || (state.isListening ? (lang === "fr" ? "Signature aviaire" : lang === "es" ? "Firma aviar" : "Bird signature") : "");
+  const latinName = state.species?.name || (state.isListening ? (lang === "fr" ? "Classification progressive" : lang === "es" ? "Clasificación progresiva" : "Progressive classification") : "");
   const confidence = getLiveConfidence(state);
 
   return (
     <Panel label={t.species} accent="#00d4ff">
       {active && commonName ? (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-base font-mono font-bold text-white tracking-wider leading-tight">{commonName}</div>
-            {!state.isComplete && <span className="text-[8px] text-cyan-300/70 tracking-widest">{getPhaseLabel(state, lang)}</span>}
-          </div>
-          <div className="text-[10px] font-mono text-cyan-400/70 italic uppercase">{latinName}</div>
-          {state.species && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {state.species.personality[lang].slice(0, state.isComplete ? 4 : 2).map(p => (
-                <span key={p} className="text-[8px] font-mono px-1.5 py-0.5 rounded border border-cyan-400/20 text-cyan-300/70 tracking-wider">{p}</span>
-              ))}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-base font-mono font-bold text-white tracking-wider leading-tight truncate">{commonName}</div>
+              {!state.isComplete && <span className="text-[8px] text-cyan-300/70 tracking-widest shrink-0">{getPhaseLabel(state, lang)}</span>}
             </div>
-          )}
-          <div className="mt-2">
-            <Bar value={confidence} color="#00d4ff" label={t.confidence} sublabel={`${confidence}%`} />
+            <div className="text-[10px] font-mono text-cyan-400/70 italic uppercase truncate">{latinName}</div>
+            {state.species && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {state.species.personality[lang].slice(0, state.isComplete ? 4 : 2).map(p => (
+                  <span key={p} className="text-[8px] font-mono px-1.5 py-0.5 rounded border border-cyan-400/20 text-cyan-300/70 tracking-wider">{p}</span>
+                ))}
+              </div>
+            )}
+            <div className="mt-2">
+              <Bar value={confidence} color="#00d4ff" label={t.confidence} sublabel={`${confidence}%`} />
+            </div>
           </div>
+          <AnimalBadge state={state} commonName={commonName} latinName={latinName} confidence={confidence} />
         </div>
       ) : (
         <Placeholder text={state.isListening || state.isAnalyzing ? t.scanning : t.noSignal} />
@@ -137,7 +175,7 @@ export function EmotionalPanel({ state, lang }: { state: AnalysisState; lang: La
       {active ? (
         <div className="space-y-2">
           <div className="text-[11px] font-mono text-orange-400 tracking-wider leading-relaxed">
-            {state.emotionalState || (lang === "fr" ? "CALIBRAGE ÉMOTIONNEL" : "EMOTIONAL CALIBRATION")}
+            {state.emotionalState || (lang === "fr" ? "CALIBRAGE ÉMOTIONNEL" : lang === "es" ? "CALIBRACIÓN EMOCIONAL" : "EMOTIONAL CALIBRATION")}
           </div>
           <Bar value={resonance} color="#ff8c00" label={t.resonance} sublabel={`${resonance}%`} />
           <Bar value={clarity} color="#ffcc00" label={t.clarity} sublabel={`${clarity}%`} />
@@ -188,7 +226,7 @@ export function BiologicalPanel({ state, lang }: { state: AnalysisState; lang: L
     <Panel label={t.biological} accent="#00ff88">
       {active ? (
         <div className="text-[11px] font-mono text-green-400 tracking-wider leading-relaxed">
-          {state.biologicalIntent || (lang === "fr" ? "DÉCODAGE DU COMPORTEMENT" : "BEHAVIOR DECODING")}
+          {state.biologicalIntent || (lang === "fr" ? "DÉCODAGE DU COMPORTEMENT" : lang === "es" ? "DECODIFICACIÓN DEL COMPORTAMIENTO" : "BEHAVIOR DECODING")}
         </div>
       ) : (
         <Placeholder text={state.isListening || state.isAnalyzing ? t.decoding2 : t.offline} />
@@ -224,7 +262,7 @@ export function EnvironmentPanel({ state, lang }: { state: AnalysisState; lang: 
   const active = isActive(state);
   const scans = state.isComplete && state.species
     ? state.species.environmentalScans[lang]
-    : [state.environmentalScan || (lang === "fr" ? "AMBIANCE : ÉCOUTE EN COURS" : "AMBIENCE: LISTENING")];
+    : [state.environmentalScan || (lang === "fr" ? "AMBIANCE : ÉCOUTE EN COURS" : lang === "es" ? "AMBIENTE: ESCUCHANDO" : "AMBIENCE: LISTENING")];
 
   return (
     <Panel label={t.environment} accent="#ffcc00">
