@@ -52,15 +52,26 @@ function getAnimalIcon(id: string, label: string, latin: string) {
   return "🐾";
 }
 
-function buildSeenSpecies(state: any, candidates: LiveCandidate[], lang: Lang): SeenSpecies | null {
-  const top = candidates[0];
-  const id = state.species?.id || top?.id || state.detectedSpecies || "";
-  const label = state.species?.scientificName?.[lang] || state.detectedSpecies || top?.name || "";
-  const latin = state.species?.name || top?.scientificName || "";
-  const confidence = Math.max(0, Math.min(99, Math.round(state.confidence || state.speciesConfidence || top?.confidence || 0)));
+function fromCandidate(candidate: LiveCandidate): SeenSpecies | null {
+  if (!candidate.name && !candidate.scientificName) return null;
+  const confidence = Math.max(0, Math.min(99, Math.round(candidate.confidence || 0)));
+  const key = (candidate.id || candidate.scientificName || candidate.name).toLowerCase();
+  return {
+    key,
+    label: candidate.name || candidate.scientificName,
+    latin: candidate.scientificName || candidate.name,
+    icon: getAnimalIcon(candidate.id, candidate.name, candidate.scientificName),
+    confidence,
+    hits: 1,
+  };
+}
 
+function fromState(state: any, lang: Lang): SeenSpecies | null {
+  const id = state.species?.id || state.detectedSpecies || "";
+  const label = state.species?.scientificName?.[lang] || state.detectedSpecies || "";
+  const latin = state.species?.name || "";
+  const confidence = Math.max(0, Math.min(99, Math.round(state.confidence || state.speciesConfidence || 0)));
   if (!label && !latin) return null;
-
   const key = (id || latin || label).toLowerCase();
   return {
     key,
@@ -70,6 +81,19 @@ function buildSeenSpecies(state: any, candidates: LiveCandidate[], lang: Lang): 
     confidence,
     hits: 1,
   };
+}
+
+function buildSeenSpeciesBatch(state: any, candidates: LiveCandidate[], lang: Lang): SeenSpecies[] {
+  const batch = [fromState(state, lang), ...candidates.slice(0, 6).map(fromCandidate)]
+    .filter((item): item is SeenSpecies => Boolean(item))
+    .filter(item => item.confidence >= 8);
+
+  const byKey = new Map<string, SeenSpecies>();
+  batch.forEach(item => {
+    const current = byKey.get(item.key);
+    if (!current || item.confidence > current.confidence) byKey.set(item.key, item);
+  });
+  return Array.from(byKey.values()).slice(0, 6);
 }
 
 export function SessionSpeciesRibbon({ state, candidates, lang }: { state: any; candidates: LiveCandidate[]; lang: Lang }) {
@@ -91,15 +115,21 @@ export function SessionSpeciesRibbon({ state, candidates, lang }: { state: any; 
   useEffect(() => {
     if (!state.isListening && !state.isAnalyzing && !state.isComplete) return;
 
-    const next = buildSeenSpecies(state, candidates, lang);
-    if (!next || next.confidence < 10) return;
+    const nextBatch = buildSeenSpeciesBatch(state, candidates, lang);
+    if (nextBatch.length === 0) return;
 
     setSeen(prev => {
-      const existing = prev.find(item => item.key === next.key);
-      if (existing) {
-        return prev.map(item => item.key === next.key ? { ...item, confidence: Math.max(item.confidence, next.confidence), hits: item.hits + 1 } : item);
-      }
-      return [...prev, next].slice(-12);
+      const byKey = new Map(prev.map(item => [item.key, item]));
+      nextBatch.forEach(next => {
+        const existing = byKey.get(next.key);
+        byKey.set(next.key, existing
+          ? { ...existing, confidence: Math.max(existing.confidence, next.confidence), hits: existing.hits + 1 }
+          : next
+        );
+      });
+      return Array.from(byKey.values())
+        .sort((a, b) => b.confidence - a.confidence || b.hits - a.hits)
+        .slice(0, 12);
     });
   }, [state.detectedSpecies, state.species?.id, state.confidence, state.speciesConfidence, state.isListening, state.isAnalyzing, state.isComplete, candidates, lang]);
 
