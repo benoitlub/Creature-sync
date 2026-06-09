@@ -18,33 +18,29 @@ function idsFor(item: SpeciesCardItem) {
   return match?.[1] || [];
 }
 
-function query(item: SpeciesCardItem) {
-  return encodeURIComponent(`${item.label} ${item.latin} chant oiseau`.replace(/\s+/g, " ").trim());
-}
-
 export function YouTubeSpeciesEmbeds({ item }: { item: SpeciesCardItem }) {
   const ids = idsFor(item);
-  const q = query(item);
+  const firstId = ids[0];
 
   return (
     <div className="rounded border p-2" style={{ borderColor: "rgba(255,80,80,0.20)", background: "rgba(255,80,80,0.035)" }}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[8px] font-mono uppercase tracking-[0.22em] text-red-200/85">Écoute / chant</span>
-        <a href={`https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noreferrer" className="text-[7px] font-mono uppercase tracking-wider text-red-100/45">recherche</a>
+        <span className="text-[8px] font-mono uppercase tracking-[0.22em] text-red-200/85">Vidéo embarquée</span>
+        <span className="text-[7px] font-mono uppercase tracking-wider text-red-100/45">lecture dans la fiche</span>
       </div>
 
-      {ids.length === 0 ? (
-        <a href={`https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noreferrer" className="block rounded border px-2 py-3 text-center text-[9px] font-mono uppercase tracking-[0.18em] text-red-100/70" style={{ borderColor: "rgba(255,80,80,0.22)" }}>
-          Ouvrir le chant sur YouTube
-        </a>
-      ) : (
+      {firstId ? (
         <iframe
-          className="h-24 w-full rounded border border-red-200/15 sm:h-28"
-          src={`https://www.youtube-nocookie.com/embed/${ids[0]}`}
-          title={`Chant ${item.label}`}
+          className="aspect-video w-full rounded border border-red-200/15"
+          src={`https://www.youtube-nocookie.com/embed/${firstId}`}
+          title={`Vidéo chant ${item.label}`}
           loading="lazy"
           allowFullScreen
         />
+      ) : (
+        <div className="rounded border px-2 py-3 text-center text-[9px] font-mono uppercase tracking-[0.18em] text-red-100/50" style={{ borderColor: "rgba(255,80,80,0.22)" }}>
+          Vidéo non mappée pour cette espèce
+        </div>
       )}
     </div>
   );
