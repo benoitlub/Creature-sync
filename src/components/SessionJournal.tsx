@@ -7,7 +7,11 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
+const APP_URL = "https://benoitlub.github.io/Creature-sync/";
+const PAYPAL_URL = "https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=benoitlubert@gmail.com&currency_code=EUR&item_name=Support+Creature-sync";
 const DONATION_LINE = "Aucun animal n’a été payé pendant cette traduction. Le laboratoire accepte les dons en miettes, en encouragements ou en euros.";
+const SHARE_CTA_TEXT = "Écoute toi aussi les conversations non autorisées du vivant :";
+const SHARE_CTA = `${SHARE_CTA_TEXT}\n${APP_URL}`;
 
 function formatDate(value: string) {
   try {
@@ -26,7 +30,7 @@ function Metric({ label, value, suffix = "" }: { label: string; value?: number; 
   );
 }
 
-function buildShareText(entry: SessionJournalEntry) {
+function buildShareText(entry: SessionJournalEntry, includeUrl = true) {
   const place = entry.locationNote || entry.habitat || "lieu non précisé";
   return [
     "Creature Sync a intercepté :",
@@ -36,6 +40,8 @@ function buildShareText(entry: SessionJournalEntry) {
     `Date : ${formatDate(entry.createdAt)}`,
     "",
     DONATION_LINE,
+    "",
+    includeUrl ? SHARE_CTA : SHARE_CTA_TEXT,
   ].join("\n");
 }
 
@@ -65,7 +71,7 @@ export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEnt
   };
 
   const wipe = () => {
-    const ok = window.confirm("Effacer tout le journal local Creature Sync ?");
+    const ok = window.confirm("Effacer tout le journal local Creature Sync ? Les pigeons prétendront ne rien savoir.");
     if (!ok) return;
     setEntries(clearSessionJournal());
     setSelectedId(null);
@@ -73,37 +79,39 @@ export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEnt
 
   const shareSelected = async () => {
     if (!selected) return;
-    const text = buildShareText(selected);
+    const fullText = buildShareText(selected, true);
+    const nativeText = buildShareText(selected, false);
     setShareStatus("");
 
     try {
       if (navigator.share) {
-        await navigator.share({
-          title: `Creature Sync — ${selected.speciesName}`,
-          text,
-        });
+        await navigator.share({ title: `Creature Sync — ${selected.speciesName}`, text: nativeText, url: APP_URL });
         setShareStatus("Traduction partagée. Les pigeons nient toute implication.");
         return;
       }
 
-      await navigator.clipboard.writeText(text);
-      setShareStatus("Texte copié. Tu peux le coller où tu veux.");
+      await navigator.clipboard.writeText(fullText);
+      setShareStatus("Traduction copiée avec le lien Creature-sync.");
     } catch {
       try {
-        await navigator.clipboard.writeText(text);
-        setShareStatus("Partage annulé, mais texte copié dans le presse-papier.");
+        await navigator.clipboard.writeText(fullText);
+        setShareStatus("Partage annulé, mais traduction copiée avec le lien Creature-sync.");
       } catch {
         setShareStatus("Partage impossible ici. Le laboratoire conserve la trace localement.");
       }
     }
   };
 
+  const donate = () => {
+    window.open(PAYPAL_URL, "_blank", "noopener,noreferrer");
+  };
+
   const copyDonationLine = async () => {
     try {
-      await navigator.clipboard.writeText(DONATION_LINE);
-      setShareStatus("Phrase de soutien copiée. Aucun animal ne confirmera cette transaction.");
+      await navigator.clipboard.writeText(`${DONATION_LINE}\n\n${SHARE_CTA}\n\nDon PayPal : benoitlubert@gmail.com`);
+      setShareStatus("Appel aux dons copié avec le lien et le PayPal.");
     } catch {
-      setShareStatus(DONATION_LINE);
+      setShareStatus(`${DONATION_LINE}\n\n${SHARE_CTA}\n\nPayPal : benoitlubert@gmail.com`);
     }
   };
 
@@ -207,17 +215,21 @@ export function SessionJournal({ latestEntry }: { latestEntry: SessionJournalEnt
               </label>
 
               <div className="rounded border p-2 space-y-1" style={{ borderColor: "#ff8c0022", background: "rgba(255,140,0,0.04)" }}>
-                <div className="text-[8px] font-mono tracking-[0.22em] uppercase text-orange-300/80">Soutenir le laboratoire</div>
+                <div className="text-[8px] font-mono tracking-[0.22em] uppercase text-orange-300/80">Partager / soutenir</div>
                 <div className="text-[9px] font-mono text-orange-100/70 leading-relaxed">{DONATION_LINE}</div>
+                <div className="text-[8px] font-mono text-cyan-200/70 leading-relaxed whitespace-pre-line">{SHARE_CTA}</div>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <button type="button" onClick={shareSelected} className="text-[8px] font-mono tracking-wider text-cyan-300 uppercase">
-                    Partager cette traduction
+                  <button type="button" onClick={shareSelected} className="rounded border border-cyan-300/25 px-2 py-1 text-[8px] font-mono tracking-wider text-cyan-300 uppercase">
+                    Partager
                   </button>
-                  <button type="button" onClick={copyDonationLine} className="text-[8px] font-mono tracking-wider text-orange-300 uppercase">
-                    Copier l’appel à dons
+                  <button type="button" onClick={donate} className="rounded border border-orange-300/25 px-2 py-1 text-[8px] font-mono tracking-wider text-orange-300 uppercase">
+                    Don PayPal
+                  </button>
+                  <button type="button" onClick={copyDonationLine} className="rounded border border-green-300/25 px-2 py-1 text-[8px] font-mono tracking-wider text-green-300 uppercase">
+                    Copier appel
                   </button>
                 </div>
-                {shareStatus && <div className="text-[8px] font-mono text-green-300/70 tracking-wider pt-1">{shareStatus}</div>}
+                {shareStatus && <div className="text-[8px] font-mono text-green-300/70 tracking-wider pt-1 whitespace-pre-line">{shareStatus}</div>}
               </div>
 
               <div className="flex justify-between gap-2 pt-1">
