@@ -12,6 +12,30 @@ type Props = {
   habitat?: string;
 };
 
+const MIC_COPY: Record<Lang, { listening: string; complete: string; ready: string; sig: string; env: string }> = {
+  fr: {
+    listening: "CANAL OUVERT // STOP POUR FIGER",
+    complete: "RAPPORT FIGÉ // TOUCHER POUR RELANCER",
+    ready: "STATION BLACKLACE — PRÊTE",
+    sig: "SIG",
+    env: "ENV",
+  },
+  en: {
+    listening: "OPEN CHANNEL // STOP TO LOCK",
+    complete: "REPORT LOCKED // TAP TO RESTART",
+    ready: "BLACKLACE STATION — READY",
+    sig: "SIG",
+    env: "ENV",
+  },
+  es: {
+    listening: "CANAL ABIERTO // DETENER PARA FIJAR",
+    complete: "INFORME FIJADO // TOCAR PARA REINICIAR",
+    ready: "ESTACIÓN BLACKLACE — LISTA",
+    sig: "SEÑ",
+    env: "AMB",
+  },
+};
+
 function Witness({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="flex items-center gap-1 text-[7px] font-mono tracking-widest uppercase text-gray-500">
@@ -24,6 +48,7 @@ function Witness({ label, value, color }: { label: string; value: string | numbe
 
 export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onStop, onReset, lang, signalQuality = 0, habitat = "---" }: Props) {
   const t = UI_LABELS[lang];
+  const m = MIC_COPY[lang];
   const label = isAnalyzing
     ? t.analyzing
     : isComplete
@@ -40,10 +65,10 @@ export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onSto
 
   const accent = isAnalyzing ? "#ff8c00" : isComplete ? "#00ff88" : isListening ? "#ff4444" : "#00d4ff";
   const status = isListening
-    ? "CANAL OUVERT // STOP POUR FIGER"
+    ? m.listening
     : isComplete
-    ? "RAPPORT FIGÉ // TOUCHER POUR RELANCER"
-    : "STATION BLACKLACE — PRÊTE";
+    ? m.complete
+    : m.ready;
 
   return (
     <div
@@ -70,8 +95,8 @@ export function MicButton({ isListening, isAnalyzing, isComplete, onStart, onSto
             {status}
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-            <Witness label="SIG" value={`${Math.round(signalQuality)}%`} color="#00d4ff" />
-            <Witness label="ENV" value={habitat} color="#ff8c00" />
+            <Witness label={m.sig} value={`${Math.round(signalQuality)}%`} color="#00d4ff" />
+            <Witness label={m.env} value={habitat} color="#ff8c00" />
           </div>
         </div>
 
