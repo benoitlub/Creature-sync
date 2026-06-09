@@ -1,4 +1,6 @@
 import type { Lang } from "../data/translations";
+import { WikipediaSpeciesPanel } from "./WikipediaSpeciesPanel";
+import { YouTubeSpeciesEmbeds } from "./YouTubeSpeciesEmbeds";
 
 export type SpeciesCardItem = {
   key: string;
@@ -11,31 +13,6 @@ export type SpeciesCardItem = {
 
 function query(item: SpeciesCardItem) {
   return encodeURIComponent(`${item.label} ${item.latin}`.replace(/\s+/g, " ").trim());
-}
-
-function realText(item: SpeciesCardItem, lang: Lang) {
-  const raw = `${item.label} ${item.latin}`.toLowerCase();
-  const fr = lang === "fr";
-
-  if (raw.includes("merle") || raw.includes("blackbird") || raw.includes("turdus")) return fr
-    ? "Oiseau de jardins, haies et sous-bois. Chant flûté, riche, souvent depuis un arbre ou un toit. Très audible au printemps, mais facilement noyé par route, vent ou voix humaines."
-    : "Garden and woodland-edge bird. Rich fluted song, often from a tree or roof. Loud in spring, but easily masked by road noise, wind or human voices.";
-
-  if (raw.includes("pie") || raw.includes("magpie") || raw.includes("pica")) return fr
-    ? "Corvidé très vocal. Cris râpeux, bavards, souvent en petits groupes. Dans le bruit, il peut être confondu avec corneille ou corbeau."
-    : "Very vocal corvid. Harsh chattering calls, often in small groups. In noise it can be confused with crows.";
-
-  if (raw.includes("perruche") || raw.includes("parakeet") || raw.includes("psittacula")) return fr
-    ? "Perruche urbaine fréquente autour de Paris. Cris aigus, perçants, rapides, souvent en vol ou en groupe."
-    : "Common urban parakeet around Paris. Sharp high calls, often in flight or in groups.";
-
-  if (raw.includes("corbeau") || raw.includes("corneille") || raw.includes("crow") || raw.includes("corvus")) return fr
-    ? "Corvidé grave et puissant. Croassements bas, rauques, espacés. Les graves sont souvent masqués par moteurs et vent."
-    : "Low, powerful corvid. Harsh spaced calls. Low frequencies are often masked by engines and wind.";
-
-  return fr
-    ? "Candidat sonore issu de la mémoire de session. À confirmer en comparant habitat, rythme du chant et hauteur du signal."
-    : "Sound candidate from session memory. Confirm by comparing habitat, rhythm and pitch.";
 }
 
 function feuchText(item: SpeciesCardItem, lang: Lang) {
@@ -78,10 +55,7 @@ export function SpeciesFeuchCard({ item, lang, onClose }: { item: SpeciesCardIte
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="rounded border p-2 text-[9px] font-mono leading-relaxed text-cyan-50/80" style={{ borderColor: "rgba(0,212,255,0.18)", background: "rgba(0,212,255,0.035)" }}>
-          <div className="mb-1 text-[8px] uppercase tracking-[0.22em] text-cyan-300/80">Fiche réelle</div>
-          {realText(item, lang)}
-        </div>
+        <WikipediaSpeciesPanel item={item} lang={lang} />
         <div className="rounded border p-2 text-[9px] font-mono leading-relaxed text-orange-50/80" style={{ borderColor: "rgba(255,140,0,0.20)", background: "rgba(255,140,0,0.04)" }}>
           <div className="mb-1 text-[8px] uppercase tracking-[0.22em] text-orange-300/85">Wiki Feuch</div>
           {feuchText(item, lang)}
@@ -92,10 +66,13 @@ export function SpeciesFeuchCard({ item, lang, onClose }: { item: SpeciesCardIte
         <span className="uppercase tracking-[0.22em] text-green-300/70">Pourquoi ce candidat ?</span> — Revenu {item.hits} fois dans la mémoire de session. Confiance max : {item.confidence}%. En milieu bruyant, c’est une piste, pas une preuve.
       </div>
 
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <a href={`https://www.youtube.com/results?search_query=${q}+chant+oiseau`} target="_blank" rel="noreferrer" className="rounded border px-2 py-1.5 text-center text-[8px] font-mono uppercase tracking-wider text-red-200" style={{ borderColor: "rgba(255,80,80,0.25)", background: "rgba(255,80,80,0.06)" }}>Chant / vidéo</a>
+      <div className="mt-2">
+        <YouTubeSpeciesEmbeds item={item} />
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <a href={`https://www.google.com/search?tbm=isch&q=${q}`} target="_blank" rel="noreferrer" className="rounded border px-2 py-1.5 text-center text-[8px] font-mono uppercase tracking-wider text-cyan-200" style={{ borderColor: "rgba(0,212,255,0.25)", background: "rgba(0,212,255,0.06)" }}>Galerie</a>
-        <a href={`https://www.google.com/search?q=${q}+wikipedia`} target="_blank" rel="noreferrer" className="rounded border px-2 py-1.5 text-center text-[8px] font-mono uppercase tracking-wider text-green-200" style={{ borderColor: "rgba(0,255,136,0.25)", background: "rgba(0,255,136,0.06)" }}>Fiche</a>
+        <a href={`https://www.google.com/search?q=${q}+wikipedia`} target="_blank" rel="noreferrer" className="rounded border px-2 py-1.5 text-center text-[8px] font-mono uppercase tracking-wider text-green-200" style={{ borderColor: "rgba(0,255,136,0.25)", background: "rgba(0,255,136,0.06)" }}>Recherche fiche</a>
       </div>
     </div>
   );
