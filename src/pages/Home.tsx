@@ -20,7 +20,7 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
-const VERSION_LABEL = "v2.7 FEUCH CARDS";
+const VERSION_LABEL = "v2.8 WIKI / MEDIA";
 
 function ScannerLines() {
   return <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 1 }}><div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)", backgroundSize: "100% 4px" }} /></div>;
