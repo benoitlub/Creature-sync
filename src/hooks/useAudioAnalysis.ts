@@ -31,7 +31,9 @@ export type LiveCandidate = {
   confidence: number;
 };
 
-const MIN_LIVE_RMS = 0.0025;
+// Volume is now only a weak gate. Birds at distance are often quiet but structured.
+const MIN_LIVE_RMS = 0.0012;
+const MIN_SIGNATURE_ACTIVITY = 0.16;
 const MIN_STABLE_SCORE = 0.28;
 const AMBIGUITY_MARGIN = 0.08;
 const LIVE_CANDIDATE_LIMIT = 4;
@@ -61,9 +63,27 @@ function rangeScore(val: number, min: number, max: number): number {
   return Math.max(0, 1 - Math.abs(val - mid) / range);
 }
 
+function signatureActivity(features: AudioFeatures | null): number {
+  if (!features) return 0;
+  const tonal = Math.max(0, 1 - features.flatness);
+  const highBand = features.spectralCentroid > 1200 ? 1 : features.spectralCentroid / 1200;
+  const articulation = Math.min(1, features.zcr * 10);
+  const repetition = Math.min(1, features.periodicity * 3.2);
+  const lowRumblePenalty = features.lowEnergyRatio > 0.72 ? 0.55 : 1;
+  const whisperBonus = features.rms > MIN_LIVE_RMS ? 1 : 0.45;
+
+  return Math.max(0, Math.min(1, (
+    tonal * 0.22 +
+    highBand * 0.22 +
+    articulation * 0.2 +
+    repetition * 0.28 +
+    whisperBonus * 0.08
+  ) * lowRumblePenalty));
+}
+
 function inferHabitat(features: AudioFeatures | null): Habitat {
-  if (!features || features.rms < 0.004) return "quiet";
-  if (features.rms > 0.2 || features.flatness > 0.52) return "urban";
+  if (!features || signatureActivity(features) < 0.12) return "quiet";
+  if (features.rms > 0.22 || (features.flatness > 0.6 && features.periodicity < 0.18)) return "urban";
   if (features.spectralCentroid > 1800 && features.lowEnergyRatio < 0.5) return "forest";
   return "mixed";
 }
@@ -74,32 +94,37 @@ function speciesScore(species: Species, features: AudioFeatures): number {
   let weight = 0;
   const add = (s: number, w: number) => { score += s * w; weight += w; };
 
-  add(rangeScore(features.dominantFreq, p.dominantFreqMin, p.dominantFreqMax), 2);
-  add(rangeScore(features.spectralCentroid, p.spectralCentroidMin, p.spectralCentroidMax), 1.5);
-  add(rangeScore(features.flatness, p.flatnessMin, p.flatnessMax), 1);
-  add(rangeScore(features.lowEnergyRatio, p.lowEnergyRatioMin, p.lowEnergyRatioMax), 1);
-  add(rangeScore(features.zcr, p.zcrMin, p.zcrMax), 1);
-  add(rangeScore(features.periodicity, p.periodicityMin, p.periodicityMax), 1);
-  add(rangeScore(features.rms, p.rmsMin, p.rmsMax), 0.8);
+  // Signature first: frequency shape, articulation and repetition matter far more than loudness.
+  add(rangeScore(features.dominantFreq, p.dominantFreqMin, p.dominantFreqMax), 2.6);
+  add(rangeScore(features.spectralCentroid, p.spectralCentroidMin, p.spectralCentroidMax), 2.4);
+  add(rangeScore(features.flatness, p.flatnessMin, p.flatnessMax), 1.4);
+  add(rangeScore(features.lowEnergyRatio, p.lowEnergyRatioMin, p.lowEnergyRatioMax), 1.8);
+  add(rangeScore(features.zcr, p.zcrMin, p.zcrMax), 1.7);
+  add(rangeScore(features.periodicity, p.periodicityMin, p.periodicityMax), 2.2);
+  add(rangeScore(features.rms, p.rmsMin, p.rmsMax), 0.25);
 
   let normalized = score / weight;
   const habitat = inferHabitat(features);
+  const signature = signatureActivity(features);
+
+  if (signature > 0.34) normalized += 0.08;
 
   // Depuis une fenêtre en ville, on privilégie les oiseaux aigus et bavards
   // plutôt que de retomber mécaniquement sur le pigeon.
-  if ((habitat === "urban" || habitat === "mixed") && ["ring_necked_parakeet", "house_sparrow", "magpie"].includes(species.id)) normalized += 0.1;
-  if ((habitat === "forest" || habitat === "mixed") && ["blackbird", "robin", "great_tit", "blue_tit", "chaffinch", "wren", "nightingale"].includes(species.id)) normalized += 0.1;
+  if ((habitat === "urban" || habitat === "mixed") && ["ring_necked_parakeet", "house_sparrow", "magpie"].includes(species.id)) normalized += 0.12;
+  if ((habitat === "forest" || habitat === "mixed") && ["blackbird", "robin", "great_tit", "blue_tit", "chaffinch", "wren", "nightingale"].includes(species.id)) normalized += 0.12;
 
-  const highFast = features.spectralCentroid > 2600 && features.zcr > 0.06 && features.lowEnergyRatio < 0.45;
-  const melodic = features.periodicity > 0.22 && features.spectralCentroid > 1700 && features.lowEnergyRatio < 0.42;
-  const pigeonLike = features.dominantFreq < 950 && features.spectralCentroid < 1900 && features.lowEnergyRatio > 0.45 && features.periodicity > 0.22;
+  const highFast = features.spectralCentroid > 2400 && features.zcr > 0.045 && features.lowEnergyRatio < 0.52;
+  const melodic = features.periodicity > 0.18 && features.spectralCentroid > 1450 && features.lowEnergyRatio < 0.52;
+  const pigeonLike = features.dominantFreq < 950 && features.spectralCentroid < 1900 && features.lowEnergyRatio > 0.48 && features.periodicity > 0.25;
 
-  if (species.id === "ring_necked_parakeet" && highFast && features.flatness > 0.12) normalized += 0.16;
-  if (species.id === "nightingale" && melodic && features.flatness < 0.4) normalized += 0.14;
-  if (["great_tit", "blue_tit", "house_sparrow", "chaffinch", "robin"].includes(species.id) && highFast) normalized += 0.09;
-  if (species.id === "magpie" && features.flatness > 0.16 && features.zcr > 0.06) normalized += 0.1;
+  if (species.id === "ring_necked_parakeet" && highFast && features.flatness > 0.1) normalized += 0.22;
+  if (species.id === "nightingale" && melodic && features.flatness < 0.45) normalized += 0.18;
+  if (["great_tit", "blue_tit", "house_sparrow", "chaffinch", "robin", "blackbird", "wren"].includes(species.id) && (highFast || melodic)) normalized += 0.13;
+  if (species.id === "magpie" && features.flatness > 0.14 && features.zcr > 0.045) normalized += 0.12;
 
-  if (PIGEON_IDS.has(species.id) && !pigeonLike) normalized -= 0.22;
+  if (PIGEON_IDS.has(species.id) && !pigeonLike) normalized -= 0.34;
+  if (PIGEON_IDS.has(species.id) && signature > 0.32 && features.spectralCentroid > 1700) normalized -= 0.16;
   if (species.id === "crow" && features.spectralCentroid > 2400) normalized -= 0.12;
 
   return Math.max(0, Math.min(1, normalized));
@@ -113,13 +138,15 @@ function classifyLocalSpecies(features: AudioFeatures): { species: Species; scor
 }
 
 function scoreToConfidence(score: number, features: AudioFeatures | null): number {
-  if (!features || features.rms < MIN_LIVE_RMS) return 0;
-  const signalBonus = Math.min(12, features.rms * 70);
-  return Math.max(12, Math.min(92, Math.round(score * 86 + signalBonus)));
+  const signature = signatureActivity(features);
+  if (!features || signature < MIN_SIGNATURE_ACTIVITY) return 0;
+  const signalBonus = Math.min(6, features.rms * 35);
+  const structureBonus = Math.min(14, signature * 18);
+  return Math.max(12, Math.min(92, Math.round(score * 72 + signalBonus + structureBonus)));
 }
 
 function getLiveSpeciesCandidates(features: AudioFeatures | null, lang: Lang): LiveCandidate[] {
-  if (!features || features.rms < MIN_LIVE_RMS) return [];
+  if (!features || signatureActivity(features) < MIN_SIGNATURE_ACTIVITY) return [];
 
   const scores = classifyLocalSpecies(features).slice(0, LIVE_CANDIDATE_LIMIT);
   const best = scores[0]?.score ?? 0;
@@ -136,7 +163,7 @@ function getLiveSpeciesCandidates(features: AudioFeatures | null, lang: Lang): L
 
 function getBestLiveCandidate(features: AudioFeatures | null): { species: Species; score: number; ambiguous: boolean } {
   const birds = ALL_SPECIES.filter((species) => BIRD_IDS.has(species.id));
-  if (!features || features.rms < MIN_LIVE_RMS) {
+  if (!features || signatureActivity(features) < MIN_SIGNATURE_ACTIVITY) {
     return {
       species: pickRandomSpecies(birds.filter(s => !PIGEON_IDS.has(s.id))),
       score: 0,
@@ -153,9 +180,9 @@ function getBestLiveCandidate(features: AudioFeatures | null): { species: Specie
   if (features.dominantFreq >= 650) birdLikelihood += 1;
   if (features.spectralCentroid >= 1000) birdLikelihood += 1;
   if (features.lowEnergyRatio <= 0.68) birdLikelihood += 1;
-  if (features.zcr >= 0.035) birdLikelihood += 1;
-  if (features.rms <= 0.28) birdLikelihood += 1;
-  if (features.flatness >= 0.04 && features.flatness <= 0.62) birdLikelihood += 1;
+  if (features.zcr >= 0.03) birdLikelihood += 1;
+  if (signatureActivity(features) >= MIN_SIGNATURE_ACTIVITY) birdLikelihood += 2;
+  if (features.flatness >= 0.04 && features.flatness <= 0.66) birdLikelihood += 1;
 
   let mammalLikelihood = 0;
   if (features.rms >= 0.16) mammalLikelihood += 1;
@@ -372,13 +399,14 @@ export function useAudioAnalysis() {
       featureIntervalRef.current = setInterval(() => {
         if (!analyser || !ctx) return;
         const feats = extractAudioFeatures(analyser, ctx);
+        const signature = signatureActivity(feats);
         setAudioFeatures(feats);
         frames++;
-        if (feats.rms > MIN_LIVE_RMS || frames % 8 === 0) {
+        if (signature > 0.13 || feats.rms > MIN_LIVE_RMS || frames % 8 === 0) {
           accumulatedFeaturesRef.current.push(feats);
           if (accumulatedFeaturesRef.current.length > 180) accumulatedFeaturesRef.current = accumulatedFeaturesRef.current.slice(-180);
         }
-        const progress = Math.min(96, frames * 0.55 + accumulatedFeaturesRef.current.length * 1.25 + Math.min(18, feats.rms * 360) + Math.random() * 1.5);
+        const progress = Math.min(96, frames * 0.45 + accumulatedFeaturesRef.current.length * 1.25 + Math.min(24, signature * 30) + Math.min(8, feats.rms * 120) + Math.random() * 1.5);
         const avg = getAverageFeatures(accumulatedFeaturesRef.current) || feats;
         setState(s => ({ ...s, scanProgress: Math.max(s.scanProgress, progress), audioFeatures: avg }));
         if (frames % 6 === 0 && (accumulatedFeaturesRef.current.length > 0 || progress > 8)) publishLiveReading(avg, progress);
