@@ -19,6 +19,60 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
+const HOME_COPY: Record<Lang, { candidatesTitle: string; noCandidate: string; signalTitle: string; live: string; idle: string; imageTitle: string; visualSlot: string; visualFallback: string; signatureFallback: string; futureVisual: string; actions: string; shareSoon: string; hideJournal: string; journal: string; helpSoon: string }> = {
+  fr: {
+    candidatesTitle: "Espèces probables",
+    noCandidate: "Aucune espèce stabilisée",
+    signalTitle: "Signatures & activité biologique",
+    live: "LIVE",
+    idle: "VEILLE",
+    imageTitle: "Image animal",
+    visualSlot: "slot v2.4",
+    visualFallback: "Animal en approche",
+    signatureFallback: "signature non stabilisée",
+    futureVisual: "future photo + fiche wiki farfelue",
+    actions: "Actions",
+    shareSoon: "Partager bientôt",
+    hideJournal: "Masquer journal",
+    journal: "Journal",
+    helpSoon: "Aider bientôt",
+  },
+  en: {
+    candidatesTitle: "Likely species",
+    noCandidate: "No stable species yet",
+    signalTitle: "Signatures & biological activity",
+    live: "LIVE",
+    idle: "STANDBY",
+    imageTitle: "Animal image",
+    visualSlot: "v2.4 slot",
+    visualFallback: "Animal incoming",
+    signatureFallback: "unstable signature",
+    futureVisual: "future photo + absurd wiki file",
+    actions: "Actions",
+    shareSoon: "Share soon",
+    hideJournal: "Hide journal",
+    journal: "Journal",
+    helpSoon: "Support soon",
+  },
+  es: {
+    candidatesTitle: "Especies probables",
+    noCandidate: "Ninguna especie estabilizada",
+    signalTitle: "Firmas y actividad biológica",
+    live: "EN VIVO",
+    idle: "ESPERA",
+    imageTitle: "Imagen animal",
+    visualSlot: "slot v2.4",
+    visualFallback: "Animal aproximándose",
+    signatureFallback: "firma no estabilizada",
+    futureVisual: "futura foto + ficha wiki absurda",
+    actions: "Acciones",
+    shareSoon: "Compartir pronto",
+    hideJournal: "Ocultar diario",
+    journal: "Diario",
+    helpSoon: "Apoyar pronto",
+  },
+};
+
 function ScannerLines() {
   return <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 1 }}><div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)", backgroundSize: "100% 4px" }} /></div>;
 }
@@ -62,12 +116,14 @@ function getBiologicalActivityPercent(audioFeatures: any, progress: number) { if
 function isPigeonLike(audioFeatures: any) { if (!audioFeatures) return false; return audioFeatures.dominantFreq < 950 && audioFeatures.spectralCentroid < 1900 && audioFeatures.lowEnergyRatio > 0.45 && audioFeatures.periodicity > 0.22 && audioFeatures.zcr < 0.12; }
 function getSecondarySignatureLabel(audioFeatures: any, habitat: string, detectedLabel: string | null, gossip: number, signal: number) { const label = (detectedLabel || "").toLowerCase(); const primaryIsPigeon = label.includes("pigeon") || label.includes("columba"); if (primaryIsPigeon || isPigeonLike(audioFeatures)) return "ROUCOULEMENT POSSIBLE"; if (audioFeatures?.spectralCentroid > 2800 && audioFeatures?.zcr > 0.08 && audioFeatures?.flatness > 0.12) return "PSITTACIDÉ POSSIBLE"; if (habitat === "FORÊT") return "PASSEREAU POSSIBLE"; if (gossip > 62 && signal > 10) return "SIGNAL BAVARD"; return "ÉCHO SECONDAIRE"; }
 
-function SpeciesCandidateList({ candidates, active }: { candidates: LiveCandidate[]; active: boolean }) {
+function SpeciesCandidateList({ candidates, active, lang }: { candidates: LiveCandidate[]; active: boolean; lang: Lang }) {
   const rows = candidates.slice(0, 4);
-  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: active ? "#00ff8840" : "#ffffff11", background: "rgba(0,10,25,0.58)" }}><div className="flex items-center justify-between mb-1.5"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-green-300/70">Espèces probables</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">BirdNET-lite</div></div><div className="space-y-1">{rows.length === 0 ? <div className="grid grid-cols-[18px_1fr_42px] items-center gap-2 text-[9px] font-mono tracking-wider text-gray-600"><span>--</span><span className="truncate uppercase">Aucune espèce stabilisée</span><span className="text-right">--</span></div> : rows.map((candidate, index) => <div key={`${candidate.id}-${index}`} className="grid grid-cols-[18px_1fr_auto_38px] items-center gap-2 text-[9px] font-mono tracking-wider"><span className="text-green-300/70">{index + 1}.</span><span className="truncate uppercase text-gray-300">{candidate.name}</span><LedBar value={candidate.confidence} /><span className="text-right text-green-200">{candidate.confidence}%</span></div>)}</div></div>;
+  const copy = HOME_COPY[lang];
+  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: active ? "#00ff8840" : "#ffffff11", background: "rgba(0,10,25,0.58)" }}><div className="flex items-center justify-between mb-1.5"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-green-300/70">{copy.candidatesTitle}</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">BirdNET-lite</div></div><div className="space-y-1">{rows.length === 0 ? <div className="grid grid-cols-[18px_1fr_42px] items-center gap-2 text-[9px] font-mono tracking-wider text-gray-600"><span>--</span><span className="truncate uppercase">{copy.noCandidate}</span><span className="text-right">--</span></div> : rows.map((candidate, index) => <div key={`${candidate.id}-${index}`} className="grid grid-cols-[18px_1fr_auto_38px] items-center gap-2 text-[9px] font-mono tracking-wider"><span className="text-green-300/70">{index + 1}.</span><span className="truncate uppercase text-gray-300">{candidate.name}</span><LedBar value={candidate.confidence} /><span className="text-right text-green-200">{candidate.confidence}%</span></div>)}</div></div>;
 }
 
-function LiveSignalDashboard({ active, audioFeatures, detectedLabel, progress }: { active: boolean; audioFeatures: any; detectedLabel: string | null; progress: number }) {
+function LiveSignalDashboard({ active, audioFeatures, detectedLabel, progress, lang }: { active: boolean; audioFeatures: any; detectedLabel: string | null; progress: number; lang: Lang }) {
+  const copy = HOME_COPY[lang];
   const signal = getSignalPercent(audioFeatures, progress);
   const biologicalActivity = getBiologicalActivityPercent(audioFeatures, progress);
   const sharpness = Math.min(99, Math.max(0, Math.round((audioFeatures?.zcr ?? 0) * 420)));
@@ -87,19 +143,21 @@ function LiveSignalDashboard({ active, audioFeatures, detectedLabel, progress }:
     if (lowEnergy > 62 && signal > 10 && biologicalActivity < 52) rows.push({ label: "BASSE FRÉQ. / BRUIT VIVANT ?", value: lowBandValue, tone: "warning" });
     return rows.slice(0, 4);
   }, [hasSignal, detectedLabel, progress, signal, gossip, lowEnergy, habitat, audioFeatures, biologicalActivity]);
-  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: active ? "#00d4ff44" : "#ffffff11", background: "rgba(0,10,25,0.68)" }}><div className="flex items-center justify-between mb-1.5"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-cyan-400/70">Signatures & activité biologique</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>{active ? "LIVE" : "VEILLE"}</div></div><div className="space-y-1">{signatureRows.map(row => { const diode = row.tone === "bio" ? "#00ff88" : row.tone === "primary" ? "#00ff88" : row.tone === "secondary" ? "#00d4ff" : row.tone === "warning" ? "#ff8c00" : "#ffffff33"; return <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider"><span className="w-1.5 h-1.5 rounded-full" style={{ background: diode, boxShadow: row.pending ? "none" : `0 0 5px ${diode}` }} /><span className={`truncate uppercase ${row.pending ? "text-gray-600" : "text-gray-300"}`}>{row.label}</span><LedBar value={row.value} pending={row.pending} /><span className={`text-right ${row.pending ? "text-gray-600" : "text-cyan-300"}`}>{row.pending ? "--" : `${row.value}%`}</span></div>; })}</div></div>;
+  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: active ? "#00d4ff44" : "#ffffff11", background: "rgba(0,10,25,0.68)" }}><div className="flex items-center justify-between mb-1.5"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-cyan-400/70">{copy.signalTitle}</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase" style={{ color: active ? "#00ff88" : "#ffffff33" }}>{active ? copy.live : copy.idle}</div></div><div className="space-y-1">{signatureRows.map(row => { const diode = row.tone === "bio" ? "#00ff88" : row.tone === "primary" ? "#00ff88" : row.tone === "secondary" ? "#00d4ff" : row.tone === "warning" ? "#ff8c00" : "#ffffff33"; return <div key={row.label} className="grid grid-cols-[10px_1fr_auto_34px] items-center gap-2 text-[9px] font-mono tracking-wider"><span className="w-1.5 h-1.5 rounded-full" style={{ background: diode, boxShadow: row.pending ? "none" : `0 0 5px ${diode}` }} /><span className={`truncate uppercase ${row.pending ? "text-gray-600" : "text-gray-300"}`}>{row.label}</span><LedBar value={row.value} pending={row.pending} /><span className={`text-right ${row.pending ? "text-gray-600" : "text-cyan-300"}`}>{row.pending ? "--" : `${row.value}%`}</span></div>; })}</div></div>;
 }
 
-function AnimalVisualCard({ state, candidate }: { state: any; candidate?: LiveCandidate }) {
-  const label = state.detectedSpecies || candidate?.name || "Animal en approche";
-  const latin = state.species?.name || candidate?.scientificName || "signature non stabilisée";
+function AnimalVisualCard({ state, candidate, lang }: { state: any; candidate?: LiveCandidate; lang: Lang }) {
+  const copy = HOME_COPY[lang];
+  const label = state.detectedSpecies || candidate?.name || copy.visualFallback;
+  const latin = state.species?.name || candidate?.scientificName || copy.signatureFallback;
   const key = `${label} ${latin}`.toLowerCase();
   const emoji = key.includes("pigeon") ? "🕊️" : key.includes("crow") || key.includes("corbeau") ? "🐦‍⬛" : key.includes("duck") || key.includes("canard") ? "🦆" : key.includes("owl") || key.includes("chouette") ? "🦉" : key.includes("cat") || key.includes("chat") ? "🐈" : key.includes("dog") || key.includes("chien") ? "🐕" : key.includes("pie") || key.includes("magpie") ? "🐦‍⬛" : key.includes("perruche") || key.includes("parakeet") ? "🦜" : "🐦";
-  return <div className="rounded border px-3 py-3 backdrop-blur-sm min-h-[8rem] flex flex-col justify-between" style={{ borderColor: "#00ff8840", background: "radial-gradient(circle at 50% 20%, rgba(0,255,136,0.10), rgba(0,10,25,0.72))" }}><div className="flex items-center justify-between"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-green-300/70">Image animal</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">slot v2.3</div></div><div className="flex items-center gap-3"><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border text-5xl" style={{ borderColor: "rgba(0,255,136,0.28)", background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 22px rgba(0,255,136,0.08)" }}>{emoji}</div><div className="min-w-0"><div className="truncate text-sm font-mono uppercase tracking-[0.12em] text-green-100">{label}</div><div className="mt-1 truncate text-[10px] font-mono italic tracking-[0.08em] text-green-200/45">{latin}</div><div className="mt-2 text-[8px] font-mono uppercase tracking-[0.18em] text-slate-500">future photo + fiche wiki farfelue</div></div></div></div>;
+  return <div className="rounded border px-3 py-3 backdrop-blur-sm min-h-[8rem] flex flex-col justify-between" style={{ borderColor: "#00ff8840", background: "radial-gradient(circle at 50% 20%, rgba(0,255,136,0.10), rgba(0,10,25,0.72))" }}><div className="flex items-center justify-between"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-green-300/70">{copy.imageTitle}</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">{copy.visualSlot}</div></div><div className="flex items-center gap-3"><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border text-5xl" style={{ borderColor: "rgba(0,255,136,0.28)", background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 22px rgba(0,255,136,0.08)" }}>{emoji}</div><div className="min-w-0"><div className="truncate text-sm font-mono uppercase tracking-[0.12em] text-green-100">{label}</div><div className="mt-1 truncate text-[10px] font-mono italic tracking-[0.08em] text-green-200/45">{latin}</div><div className="mt-2 text-[8px] font-mono uppercase tracking-[0.18em] text-slate-500">{copy.futureVisual}</div></div></div></div>;
 }
 
-function ActionPanel({ showJournal, setShowJournal }: { showJournal: boolean; setShowJournal: (value: boolean) => void }) {
-  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0040", background: "rgba(0,10,25,0.70)" }}><div className="mb-2 flex items-center justify-between"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-orange-300/75">Actions</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">Feuch Institute</div></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(0,212,255,0.36)", color: "#9eefff", background: "rgba(0,212,255,0.08)" }}>Partager bientôt</button><button type="button" onClick={() => setShowJournal(!showJournal)} className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(155,89,255,0.34)", color: "#d8c5ff", background: "rgba(155,89,255,0.08)" }}>{showJournal ? "Masquer journal" : "Journal"}</button><button type="button" className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(255,140,0,0.42)", color: "#ffd19a", background: "rgba(255,140,0,0.10)" }}>Soutenir bientôt</button></div></div>;
+function ActionPanel({ lang, showJournal, setShowJournal }: { lang: Lang; showJournal: boolean; setShowJournal: (value: boolean) => void }) {
+  const copy = HOME_COPY[lang];
+  return <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: "#ff8c0040", background: "rgba(0,10,25,0.70)" }}><div className="mb-2 flex items-center justify-between"><div className="text-[9px] font-mono tracking-[0.32em] uppercase text-orange-300/75">{copy.actions}</div><div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">Feuch Institute</div></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(0,212,255,0.36)", color: "#9eefff", background: "rgba(0,212,255,0.08)" }}>{copy.shareSoon}</button><button type="button" onClick={() => setShowJournal(!showJournal)} className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(155,89,255,0.34)", color: "#d8c5ff", background: "rgba(155,89,255,0.08)" }}>{showJournal ? copy.hideJournal : copy.journal}</button><button type="button" className="rounded border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.16em]" style={{ borderColor: "rgba(255,140,0,0.42)", color: "#ffd19a", background: "rgba(255,140,0,0.10)" }}>{copy.helpSoon}</button></div></div>;
 }
 
 export default function Home() {
@@ -123,5 +181,5 @@ export default function Home() {
     lastSavedTranslationRef.current = signature;
   }, [state.isComplete, state.translation, state.detectedSpecies, state.species, micHabitat, state]);
 
-  return <div className="relative min-h-screen w-full overflow-x-hidden flex flex-col" style={{ background: "radial-gradient(ellipse at 20% 20%, rgba(0,40,80,0.4) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(20,0,40,0.3) 0%, transparent 60%), #02060f", fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace" }}><ParticleField active={state.isListening || state.isAnalyzing} /><ScannerLines /><GlitchOverlay active={state.glitchActive} /><Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} /><main className="relative flex-1 flex flex-col gap-2 p-3 sm:p-4 max-w-4xl mx-auto w-full" style={{ zIndex: 2, paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><SpeciesPanel state={state} lang={lang} /><LiveSignalDashboard active={state.isListening || state.isAnalyzing} audioFeatures={activeAudioFeatures} detectedLabel={detectedLabel || state.detectedSpecies} progress={state.scanProgress} /></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.15fr_0.85fr]"><TranslationCard state={state} lang={lang} /><AnimalVisualCard state={state} candidate={liveCandidates[0]} /></div><SpeciesCandidateList candidates={liveCandidates} active={state.isListening || state.isAnalyzing} /><ActionPanel showJournal={showJournal} setShowJournal={setShowJournal} /><div className="flex justify-center"><CrypticTicker message={crypticMessage} /></div>{showJournal && <SessionJournal latestEntry={latestEntry} />}<div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><ThreatPanel state={state} lang={lang} /><BiologicalPanel state={state} lang={lang} /><NeuralPanel state={state} lang={lang} /><EnvironmentPanel state={state} lang={lang} /></div><div className="hidden"><EmotionalPanel state={state} lang={lang} /></div><MicButton isListening={state.isListening} isAnalyzing={state.isAnalyzing} isComplete={state.isComplete} onStart={startListening} onStop={stopListening} onReset={reset} lang={lang} signalQuality={micSignal} habitat={micHabitat} /></main></div>;
+  return <div className="relative min-h-screen w-full overflow-x-hidden flex flex-col" style={{ background: "radial-gradient(ellipse at 20% 20%, rgba(0,40,80,0.4) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(20,0,40,0.3) 0%, transparent 60%), #02060f", fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace" }}><ParticleField active={state.isListening || state.isAnalyzing} /><ScannerLines /><GlitchOverlay active={state.glitchActive} /><Header glitch={state.glitchActive} lang={lang} onLangChange={setLang} /><main className="relative flex-1 flex flex-col gap-2 p-3 sm:p-4 max-w-4xl mx-auto w-full" style={{ zIndex: 2, paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><SpeciesPanel state={state} lang={lang} /><LiveSignalDashboard active={state.isListening || state.isAnalyzing} audioFeatures={activeAudioFeatures} detectedLabel={detectedLabel || state.detectedSpecies} progress={state.scanProgress} lang={lang} /></div><div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.15fr_0.85fr]"><TranslationCard state={state} lang={lang} /><AnimalVisualCard state={state} candidate={liveCandidates[0]} lang={lang} /></div><SpeciesCandidateList candidates={liveCandidates} active={state.isListening || state.isAnalyzing} lang={lang} /><ActionPanel lang={lang} showJournal={showJournal} setShowJournal={setShowJournal} /><div className="flex justify-center"><CrypticTicker message={crypticMessage} /></div>{showJournal && <SessionJournal latestEntry={latestEntry} />}<div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><ThreatPanel state={state} lang={lang} /><BiologicalPanel state={state} lang={lang} /><NeuralPanel state={state} lang={lang} /><EnvironmentPanel state={state} lang={lang} /></div><div className="hidden"><EmotionalPanel state={state} lang={lang} /></div><MicButton isListening={state.isListening} isAnalyzing={state.isAnalyzing} isComplete={state.isComplete} onStart={startListening} onStop={stopListening} onReset={reset} lang={lang} signalQuality={micSignal} habitat={micHabitat} /></main></div>;
 }
