@@ -1,12 +1,12 @@
 import type { Lang, AnalysisState, AudioFeatures } from "./translations";
 import { ANIMAL_TEXTS } from "./animalTexts";
+export { extractAudioFeatures } from "./audioFeatures";
 
 export {
   UI_LABELS,
   getThreatColor,
   getCrypticMessages,
   getRandomTranslation,
-  extractAudioFeatures,
   classifySpecies,
   getWeightedSpecies,
 } from "./translations";
