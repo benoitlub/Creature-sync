@@ -34,6 +34,27 @@ const LIVE_PREFIX: Record<Lang, string> = {
   es: "fragmento captado",
 };
 
+const CARD_COPY: Record<Lang, { reflection: string; live: string; transmission: string; fragmentStream: string }> = {
+  fr: {
+    reflection: "RÉFLEXION BIOACOUSTIQUE",
+    live: "DIRECT",
+    transmission: "⚠ Transmission interceptée...",
+    fragmentStream: "FLUX DE FRAGMENTS",
+  },
+  en: {
+    reflection: "BIOACOUSTIC REFLECTION",
+    live: "LIVE",
+    transmission: "⚠ Transmission intercepted...",
+    fragmentStream: "FRAGMENT STREAM",
+  },
+  es: {
+    reflection: "REFLEXIÓN BIOACÚSTICA",
+    live: "EN VIVO",
+    transmission: "⚠ Transmisión interceptada...",
+    fragmentStream: "FLUJO DE FRAGMENTOS",
+  },
+};
+
 function splitWords(text: string) {
   return text
     .replace(/[“”"«»]/g, "")
@@ -68,6 +89,7 @@ function sentenceFragments(text: string, progress: number, lang: Lang) {
 
 export function TranslationCard({ state, lang }: { state: AnalysisState; lang: Lang }) {
   const t = UI_LABELS[lang];
+  const c = CARD_COPY[lang];
   const [displayed, setDisplayed] = useState("");
   const [cursor, setCursor] = useState(true);
   const steps = ANALYSIS_STEPS[lang];
@@ -86,8 +108,6 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
       return;
     }
 
-    // Pendant la captation, on ne montre que des fragments courts.
-    // La phrase complète est réservée au STOP, quand le résultat est stabilisé.
     if (state.isListening) {
       setDisplayed(sentenceFragments(state.translation, state.scanProgress, lang));
       return;
@@ -120,7 +140,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
   }, [state.translation, state.isComplete, state.isListening, state.scanProgress, lang, hasTranslation]);
 
   useEffect(() => {
-    const interval = setInterval(() => setCursor(c => !c), 500);
+    const interval = setInterval(() => setCursor(x => !x), 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -165,8 +185,8 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
             boxShadow: borderActive ? `0 0 4px ${accentColor}` : state.isAnalyzing || state.isListening ? "0 0 4px #ff8c00" : "none",
           }}
         />
-        {state.isAnalyzing && !hasTranslation ? "BIOACOUSTIC REFLECTION" : labelText}
-        {isLive && <span className="ml-auto text-[8px] tracking-wider text-green-400/70">LIVE</span>}
+        {state.isAnalyzing && !hasTranslation ? c.reflection : labelText}
+        {isLive && <span className="ml-auto text-[8px] tracking-wider text-green-400/70">{c.live}</span>}
         {state.isPoetic && isFinal && (
           <span className="ml-auto text-[8px] tracking-wider text-purple-400/70">{t.rare}</span>
         )}
@@ -223,7 +243,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
         >
           {!displayed && (
             <span className="text-cyan-400/50 tracking-[0.22em] uppercase text-[10px]">
-              ⚠ Transmission interceptée...
+              {c.transmission}
             </span>
           )}
           {state.isPoetic && displayed && isFinal && <span className="text-purple-400/60 mr-1">&ldquo;</span>}
@@ -247,7 +267,7 @@ export function TranslationCard({ state, lang }: { state: AnalysisState; lang: L
           )}
           <span className="text-[8px] font-mono text-gray-600 tracking-wider">{t.confidence}: {state.confidence}%</span>
           <span className="text-[8px] font-mono text-gray-600 tracking-wider ml-auto">
-            {isLive ? "FRAGMENT STREAM" : t.institute + " // BLACKLACE-7"}
+            {isLive ? c.fragmentStream : t.institute + " // BLACKLACE-7"}
           </span>
         </div>
       )}
