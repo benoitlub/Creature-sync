@@ -1,6 +1,7 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
+import { DayNightToggle } from "@/components/DayNightToggle";
 
 function Router() {
   return (
@@ -14,6 +15,7 @@ function Router() {
 function App() {
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+      <DayNightToggle />
       <Router />
     </WouterRouter>
   );
