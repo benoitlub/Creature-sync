@@ -120,7 +120,7 @@ function Header({ glitch, lang, onLangChange }: { glitch: boolean; lang: Lang; o
               {t.title}
             </div>
             <div className="text-[8px] sm:text-[9px] font-mono tracking-[0.26em] text-cyan-200/55 uppercase mt-1 truncate">
-              Build F-0.9 SHARE · Live candidates · Evolving phrases
+V3.0 · DAYLIGHT / MEDIA · LOCAL MP3
             </div>
           </div>
         </div>
