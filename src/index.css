@@ -113,15 +113,37 @@ body.creature-day button {
   color: #111827 !important;
 }
 
+body.creature-day [class*="/20"],
+body.creature-day [class*="/25"],
+body.creature-day [class*="/30"],
+body.creature-day [class*="/35"],
+body.creature-day [class*="/40"],
+body.creature-day [class*="/45"],
+body.creature-day [class*="/50"],
+body.creature-day [class*="/55"],
+body.creature-day [class*="/60"],
+body.creature-day [class*="/65"],
+body.creature-day [class*="/70"],
+body.creature-day [class*="/75"],
+body.creature-day [class*="/80"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+body.creature-day .text-cyan-400,
 body.creature-day .text-cyan-300,
 body.creature-day .text-cyan-200,
 body.creature-day .text-cyan-100,
 body.creature-day .text-green-300,
 body.creature-day .text-green-200,
 body.creature-day .text-green-100,
+body.creature-day .text-emerald-300,
+body.creature-day .text-emerald-200,
+body.creature-day .text-emerald-100,
 body.creature-day .text-orange-300,
 body.creature-day .text-orange-200,
 body.creature-day .text-orange-100,
+body.creature-day .text-white,
 body.creature-day .text-gray-700,
 body.creature-day .text-gray-600,
 body.creature-day .text-gray-500,
