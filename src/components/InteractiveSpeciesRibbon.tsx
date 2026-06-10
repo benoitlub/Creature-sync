@@ -55,14 +55,19 @@ function hasStableSignal(state: any, candidates: LiveCandidate[]) {
   const progress = Math.round(state.scanProgress || 0);
   const quality = Math.round(state.signalQuality || 0);
   const best = Math.max(...candidates.map(c => c.confidence || 0), state.confidence || 0, state.speciesConfidence || 0, 0);
-  return progress >= 22 && quality >= 24 && best >= 38;
+  return progress >= 26 && quality >= 28 && best >= 42;
 }
 
 function buildBatch(state: any, candidates: LiveCandidate[], lang: Lang): SeenSpecies[] {
   if (!hasStableSignal(state, candidates)) return [];
-  const batch = [fromState(state, lang), ...candidates.slice(0, 3).map(fromCandidate)]
+  const primary = fromState(state, lang);
+  const strongCandidates = candidates
+    .filter(candidate => (candidate.confidence || 0) >= 45)
+    .slice(0, primary ? 2 : 3)
+    .map(fromCandidate);
+  const batch = [primary, ...strongCandidates]
     .filter((item): item is SeenSpecies => Boolean(item))
-    .filter(item => item.confidence >= 38);
+    .filter(item => item.confidence >= 42);
   const byKey = new Map<string, SeenSpecies>();
   batch.forEach(item => {
     const current = byKey.get(item.key);
@@ -97,7 +102,7 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
         const existing = byKey.get(next.key);
         byKey.set(next.key, existing ? { ...existing, confidence: Math.max(existing.confidence, next.confidence), hits: existing.hits + 1 } : next);
       });
-      return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits).slice(0, 5);
+      return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits).slice(0, 3);
     });
   }, [state.detectedSpecies, state.species?.id, state.confidence, state.speciesConfidence, state.signalQuality, state.scanProgress, state.isListening, state.isAnalyzing, state.isComplete, candidates, lang]);
 
@@ -112,11 +117,11 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
           {seen.map(item => {
             const active = selectedKey === item.key;
             return (
-              <button key={item.key} type="button" onClick={() => setSelectedKey(active ? null : item.key)} className="min-w-[92px] rounded-xl border px-2 py-2 text-center transition-all" style={{ borderColor: active ? "rgba(0,255,136,0.66)" : "rgba(0,255,136,0.24)", background: active ? "rgba(0,255,136,0.08)" : "rgba(255,255,255,0.035)", boxShadow: active ? "0 0 14px rgba(0,255,136,0.18)" : "none" }}>
+              <button key={item.key} type="button" onClick={() => setSelectedKey(active ? null : item.key)} className="min-w-[104px] rounded-xl border px-2 py-2 text-center transition-all" style={{ borderColor: active ? "rgba(0,255,136,0.66)" : "rgba(0,255,136,0.24)", background: active ? "rgba(0,255,136,0.08)" : "rgba(255,255,255,0.035)", boxShadow: active ? "0 0 14px rgba(0,255,136,0.18)" : "none" }}>
                 <div className="text-3xl leading-none">{item.icon}</div>
-                <div className="mt-1 truncate text-[8px] font-mono uppercase tracking-[0.12em] text-green-100">{item.label}</div>
-                <div className="truncate text-[7px] font-mono italic tracking-[0.08em] text-green-200/40">{item.latin}</div>
-                <div className="mt-1 text-[7px] font-mono tracking-wider text-cyan-200/75">{item.confidence}% · {item.hits} {copy.hits}</div>
+                <div className="mt-1 truncate text-[9px] font-mono uppercase tracking-[0.12em] text-green-100">{item.label}</div>
+                <div className="truncate text-[8px] font-mono italic tracking-[0.08em] text-green-200/50">{item.latin}</div>
+                <div className="mt-1 text-[8px] font-mono tracking-wider text-cyan-200/80">{item.confidence}% · {item.hits} {copy.hits}</div>
               </button>
             );
           })}
