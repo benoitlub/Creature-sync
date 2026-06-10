@@ -1,6 +1,7 @@
 import type { Lang } from "../data/translations";
 import { WikipediaSpeciesPanel } from "./WikipediaSpeciesPanel";
 import { YouTubeSpeciesEmbeds } from "./YouTubeSpeciesEmbeds";
+import { SpeciesMediaPanel } from "./SpeciesMediaPanel";
 
 export type SpeciesCardItem = {
   key: string;
@@ -27,6 +28,10 @@ export function SpeciesFeuchCard({ item, lang, onClose }: { item: SpeciesCardIte
           <div className="mt-1 text-[8px] font-mono uppercase tracking-[0.18em] text-cyan-200/65">{item.confidence}% · {item.hits} traces</div>
         </div>
         <button type="button" onClick={onClose} className="text-[8px] font-mono uppercase tracking-wider text-gray-500">Fermer</button>
+      </div>
+
+      <div className="mt-2">
+        <SpeciesMediaPanel item={item} />
       </div>
 
       <div className="mt-2">
