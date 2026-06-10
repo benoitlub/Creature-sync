@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { basename } from "node:path";
 
 const OUT = "src/data/speciesMedia.generated.json";
+const AUDIO_DIR = "public/media/audio";
 const H = "https://";
 const COMMONS = H + "commons.wikimedia.org/w/api.php";
 const XC = H + "xeno-canto.org/api/2/recordings";
@@ -39,10 +41,35 @@ function stripHtml(value = "") {
   return String(value).replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim();
 }
 
+function absoluteUrl(url = "") {
+  if (!url) return "";
+  if (url.startsWith("//")) return "https:" + url;
+  if (url.startsWith("/")) return "https://xeno-canto.org" + url;
+  return url;
+}
+
+function safeFilePart(value = "") {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "sound";
+}
+
 async function json(url) {
   const res = await fetch(url, { headers: { "User-Agent": "Creature-sync media collector" } });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json();
+}
+
+async function downloadMp3(url, animalId, recordingId) {
+  const sourceUrl = absoluteUrl(url);
+  if (!sourceUrl) return null;
+  const res = await fetch(sourceUrl, { headers: { "User-Agent": "Creature-sync media collector" } });
+  if (!res.ok) throw new Error(`${res.status} ${sourceUrl}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  const guessed = basename(new URL(sourceUrl).pathname).split("?")[0];
+  const suffix = guessed.toLowerCase().endsWith(".mp3") ? "" : ".mp3";
+  const filename = `${safeFilePart(animalId)}-${safeFilePart(recordingId || guessed)}${suffix}`;
+  await mkdir(AUDIO_DIR, { recursive: true });
+  await writeFile(`${AUDIO_DIR}/${filename}`, bytes);
+  return `media/audio/${filename}`;
 }
 
 async function findCommonsImage(latin, label) {
@@ -74,18 +101,22 @@ async function findCommonsImage(latin, label) {
   };
 }
 
-async function findXenoAudio(latin) {
+async function findXenoAudio(latin, animalId) {
   const params = new URLSearchParams({ query: `${latin} q:A` });
   const data = await json(`${XC}?${params}`);
   const recordings = data?.recordings || [];
   const best = recordings.find(r => r.file && r.lic) || recordings[0];
   if (!best) return null;
+  const recordingId = best.id ? `XC${best.id}` : "";
+  const remoteUrl = absoluteUrl(best.file);
+  const localUrl = await downloadMp3(remoteUrl, animalId, recordingId || best.id || "xeno-canto");
   return {
-    url: best.file,
+    url: localUrl || remoteUrl,
+    remoteUrl,
     source: best.url,
     credit: best.rec || "xeno-canto",
     license: best.lic || "Creative Commons, verifier fiche source",
-    recordingId: best.id ? `XC${best.id}` : "",
+    recordingId,
   };
 }
 
@@ -95,7 +126,7 @@ async function collect() {
     const row = { animal_id: animalId, label, latin, photo: null, audio: null, validated: false };
     try { row.photo = await findCommonsImage(latin, label); } catch (err) { row.photo_error = String(err.message || err); }
     if (!/(felis|canis|strigiformes)/i.test(latin)) {
-      try { row.audio = await findXenoAudio(latin); } catch (err) { row.audio_error = String(err.message || err); }
+      try { row.audio = await findXenoAudio(latin, animalId); } catch (err) { row.audio_error = String(err.message || err); }
     }
     rows.push(row);
     console.log(`${animalId}: photo=${Boolean(row.photo)} audio=${Boolean(row.audio)}`);
@@ -103,6 +134,7 @@ async function collect() {
   await mkdir("src/data", { recursive: true });
   await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 2));
   console.log(`Wrote ${OUT}`);
+  console.log(`Downloaded MP3 files into ${AUDIO_DIR}`);
 }
 
 collect().catch(err => {
