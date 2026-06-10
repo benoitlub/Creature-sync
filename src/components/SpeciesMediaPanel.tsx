@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import mediaCache from "../data/speciesMedia.generated.json";
 import type { SpeciesCardItem } from "./SpeciesFeuchCard";
 
@@ -30,7 +31,27 @@ function findMedia(item: SpeciesCardItem) {
 
 export function SpeciesMediaPanel({ item }: { item: SpeciesCardItem }) {
   const media = findMedia(item);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
   if (!media?.photo && !media?.audio) return null;
+
+  const toggleAudio = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      audio.currentTime = 0;
+      setIsPlaying(false);
+      return;
+    }
+    try {
+      await audio.play();
+      setIsPlaying(true);
+    } catch {
+      setIsPlaying(false);
+    }
+  };
 
   return (
     <div className="rounded border p-3 text-[9px] font-mono leading-relaxed text-emerald-50/80" style={{ borderColor: "rgba(0,255,136,0.18)", background: "rgba(0,255,136,0.035)" }}>
@@ -52,7 +73,16 @@ export function SpeciesMediaPanel({ item }: { item: SpeciesCardItem }) {
       {media.audio?.url && (
         <div className="mt-2 rounded-lg border p-3" style={{ borderColor: "rgba(0,212,255,0.18)", background: "rgba(0,212,255,0.04)" }}>
           <div className="mb-2 text-[8px] uppercase tracking-[0.22em] text-cyan-300/80">Son de référence</div>
-          <audio controls preload="none" src={media.audio.url} className="w-full" />
+          <button
+            type="button"
+            onClick={toggleAudio}
+            className="w-full rounded-lg border px-3 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.22em] transition-transform active:scale-[0.98]"
+            style={{ borderColor: "rgba(0,212,255,0.45)", background: isPlaying ? "rgba(255,96,32,0.16)" : "rgba(0,212,255,0.12)", color: "#e6fbff" }}
+            aria-pressed={isPlaying}
+          >
+            {isPlaying ? "■ Stop" : "▶ Écouter le chant / bruit"}
+          </button>
+          <audio ref={audioRef} preload="none" src={media.audio.url} onEnded={() => setIsPlaying(false)} onPause={() => setIsPlaying(false)} className="hidden" />
           <div className="mt-2 text-[8px] uppercase tracking-[0.14em] text-cyan-100/60">
             Son : {media.audio.credit || "xeno-canto"} — {media.audio.license || "licence à vérifier"}
           </div>
