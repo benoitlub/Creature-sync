@@ -6,9 +6,9 @@ import { SpeciesFeuchCard, type SpeciesCardItem } from "./SpeciesFeuchCard";
 type SeenSpecies = SpeciesCardItem;
 
 const COPY: Record<Lang, { title: string; empty: string; hits: string }> = {
-  fr: { title: "Bande de session", empty: "Les espèces détectées pendant cette écoute apparaîtront ici.", hits: "traces" },
-  en: { title: "Session ribbon", empty: "Species detected during this listening session will appear here.", hits: "hits" },
-  es: { title: "Banda de sesión", empty: "Las especies detectadas durante esta escucha aparecerán aquí.", hits: "trazas" },
+  fr: { title: "Bande de session", empty: "Les espèces détectées avec un signal stable apparaîtront ici.", hits: "traces" },
+  en: { title: "Session ribbon", empty: "Stable detected species will appear here.", hits: "hits" },
+  es: { title: "Banda de sesión", empty: "Las especies detectadas con señal estable aparecerán aquí.", hits: "trazas" },
 };
 
 function getAnimalIcon(id: string, label: string, latin: string) {
@@ -51,16 +51,24 @@ function fromState(state: any, lang: Lang): SeenSpecies | null {
   return { key, label: label || latin, latin: latin || label, icon: getAnimalIcon(id, label, latin), confidence, hits: 1 };
 }
 
+function hasStableSignal(state: any, candidates: LiveCandidate[]) {
+  const progress = Math.round(state.scanProgress || 0);
+  const quality = Math.round(state.signalQuality || 0);
+  const best = Math.max(...candidates.map(c => c.confidence || 0), state.confidence || 0, state.speciesConfidence || 0, 0);
+  return progress >= 22 && quality >= 24 && best >= 38;
+}
+
 function buildBatch(state: any, candidates: LiveCandidate[], lang: Lang): SeenSpecies[] {
-  const batch = [fromState(state, lang), ...candidates.slice(0, 6).map(fromCandidate)]
+  if (!hasStableSignal(state, candidates)) return [];
+  const batch = [fromState(state, lang), ...candidates.slice(0, 3).map(fromCandidate)]
     .filter((item): item is SeenSpecies => Boolean(item))
-    .filter(item => item.confidence >= 8);
+    .filter(item => item.confidence >= 38);
   const byKey = new Map<string, SeenSpecies>();
   batch.forEach(item => {
     const current = byKey.get(item.key);
     if (!current || item.confidence > current.confidence) byKey.set(item.key, item);
   });
-  return Array.from(byKey.values()).slice(0, 6);
+  return Array.from(byKey.values()).slice(0, 3);
 }
 
 export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: any; candidates: LiveCandidate[]; lang: Lang }) {
@@ -89,9 +97,9 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
         const existing = byKey.get(next.key);
         byKey.set(next.key, existing ? { ...existing, confidence: Math.max(existing.confidence, next.confidence), hits: existing.hits + 1 } : next);
       });
-      return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits).slice(0, 12);
+      return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits).slice(0, 5);
     });
-  }, [state.detectedSpecies, state.species?.id, state.confidence, state.speciesConfidence, state.isListening, state.isAnalyzing, state.isComplete, candidates, lang]);
+  }, [state.detectedSpecies, state.species?.id, state.confidence, state.speciesConfidence, state.signalQuality, state.scanProgress, state.isListening, state.isAnalyzing, state.isComplete, candidates, lang]);
 
   return (
     <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: "#00ff8840", background: "rgba(0,10,25,0.62)" }}>
