@@ -13,6 +13,7 @@ type MediaRow = {
 };
 
 const mediaRows: MediaRow[] = Array.isArray((mediaCache as any).rows) ? (mediaCache as any).rows : [];
+const MAX_VISIBLE_SPECIES = 5;
 
 const COPY: Record<Lang, { title: string; empty: string; hits: string; listen: string; stop: string }> = {
   fr: { title: "Bande de session", empty: "Les espèces détectées avec un signal stable apparaîtront ici.", hits: "traces", listen: "Écouter", stop: "Stop" },
@@ -49,12 +50,12 @@ function getAnimalIcon(id: string, label: string, latin: string) {
   if (raw.includes("kestrel") || raw.includes("faucon") || raw.includes("falco")) return "🦅";
   if (raw.includes("dove") || raw.includes("tourterelle") || raw.includes("streptopelia")) return "🕊️";
   if (raw.includes("pigeon") || raw.includes("columba")) return "🕊️";
-  if (raw.includes("starling") || raw.includes("étourneau") || raw.includes("sturnus")) return "🐦‍⬛";
+  if (raw.includes("starling") || raw.includes("étourneau") || raw.includes("etourneau") || raw.includes("sturnus")) return "🐦";
   if (raw.includes("magpie") || raw.includes("pie") || raw.includes("pica")) return "🐦‍⬛";
   if (raw.includes("crow") || raw.includes("corbeau") || raw.includes("corneille") || raw.includes("corvus")) return "🐦‍⬛";
   if (raw.includes("blackbird") || raw.includes("merle") || raw.includes("turdus")) return "🐦‍⬛";
   if (raw.includes("robin") || raw.includes("rouge-gorge") || raw.includes("erithacus")) return "🐦";
-  if (raw.includes("tit") || raw.includes("mésange") || raw.includes("parus") || raw.includes("cyanistes")) return "🐤";
+  if (raw.includes("tit") || raw.includes("mésange") || raw.includes("mesange") || raw.includes("parus") || raw.includes("cyanistes")) return "🐤";
   if (raw.includes("wren") || raw.includes("troglodyte")) return "🐥";
   if (raw.includes("sparrow") || raw.includes("moineau") || raw.includes("passer")) return "🐦";
   return "🐾";
@@ -89,7 +90,7 @@ function buildBatch(state: any, candidates: LiveCandidate[], lang: Lang): SeenSp
   const primary = fromState(state, lang);
   const strongCandidates = candidates
     .filter(candidate => (candidate.confidence || 0) >= 45)
-    .slice(0, primary ? 2 : 3)
+    .slice(0, primary ? 3 : 4)
     .map(fromCandidate);
   const batch = [primary, ...strongCandidates]
     .filter((item): item is SeenSpecies => Boolean(item))
@@ -99,7 +100,7 @@ function buildBatch(state: any, candidates: LiveCandidate[], lang: Lang): SeenSp
     const current = byKey.get(item.key);
     if (!current || item.confidence > current.confidence) byKey.set(item.key, item);
   });
-  return Array.from(byKey.values()).slice(0, 3);
+  return Array.from(byKey.values()).slice(0, MAX_VISIBLE_SPECIES);
 }
 
 export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: any; candidates: LiveCandidate[]; lang: Lang }) {
@@ -126,14 +127,22 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
     if (!state.isListening && !state.isAnalyzing && !state.isComplete) return;
     const nextBatch = buildBatch(state, candidates, lang);
     if (nextBatch.length === 0) return;
+    const currentKey = nextBatch[0]?.key || null;
     setSeen(prev => {
       const byKey = new Map(prev.map(item => [item.key, item]));
       nextBatch.forEach(next => {
         const existing = byKey.get(next.key);
         byKey.set(next.key, existing ? { ...existing, confidence: Math.max(existing.confidence, next.confidence), hits: existing.hits + 1 } : next);
       });
-      return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits).slice(0, 3);
+      const sorted = Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence || b.hits - a.hits);
+      if (currentKey && byKey.has(currentKey)) {
+        const current = byKey.get(currentKey)!;
+        const rest = sorted.filter(item => item.key !== currentKey);
+        return [current, ...rest].slice(0, MAX_VISIBLE_SPECIES);
+      }
+      return sorted.slice(0, MAX_VISIBLE_SPECIES);
     });
+    if (state.isComplete && currentKey) setSelectedKey(currentKey);
   }, [state.detectedSpecies, state.species?.id, state.confidence, state.speciesConfidence, state.signalQuality, state.scanProgress, state.isListening, state.isAnalyzing, state.isComplete, candidates, lang]);
 
   const playAudio = async (item: SeenSpecies) => {
