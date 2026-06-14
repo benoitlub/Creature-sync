@@ -20,7 +20,7 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
-const VERSION_LABEL = "V3.0 · DAYLIGHT / MEDIA · LOCAL MP3";
+const VERSION_LABEL = "V3.1 · LOCALIZED MEDIA · PINNED SPECIES";
 
 const DASHBOARD_COPY: Record<Lang, {
   bio: string;
