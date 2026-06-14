@@ -1,5 +1,235 @@
 import type { Species } from "./animals";
 
+type ForestCopy = {
+  en: string;
+  es: string;
+  moodEn: string;
+  moodEs: string;
+  intentEn: string;
+  intentEs: string;
+  translationsEn: string[];
+  translationsEs: string[];
+};
+
+const FOREST_COPY: Record<string, ForestCopy> = {
+  blackbird: {
+    en: "Common blackbird",
+    es: "Mirlo común",
+    moodEn: "TERRITORIAL LYRICISM",
+    moodEs: "LIRISMO TERRITORIAL",
+    intentEn: "HEDGE OWNERSHIP NOTICE",
+    intentEs: "DECLARACIÓN DE PROPIEDAD DEL SETO",
+    translationsEn: [
+      "This branch is officially entered in my personal registry.",
+      "The biped is passing through. I note its lack of discretion.",
+      "I sing, therefore this clearing temporarily belongs to me.",
+    ],
+    translationsEs: [
+      "Esta rama queda oficialmente inscrita en mi registro personal.",
+      "El bípedo pasa. Anoto su falta de discreción.",
+      "Canto, luego este claro me pertenece provisionalmente.",
+    ],
+  },
+  robin: {
+    en: "European robin",
+    es: "Petirrojo europeo",
+    moodEn: "MINIATURE COURAGE",
+    moodEs: "CORAJE MINIATURA",
+    intentEn: "CLAIMING A TINY TERRITORY",
+    intentEs: "RECLAMACIÓN DE TERRITORIO MINÚSCULO",
+    translationsEn: [
+      "I am small, but legally terrifying.",
+      "This path is monitored by an orange authority.",
+      "Come a little closer and I become administrative.",
+    ],
+    translationsEs: [
+      "Soy pequeño, pero jurídicamente temible.",
+      "Este sendero está vigilado por una autoridad naranja.",
+      "Acércate un poco más y me vuelvo administrativo.",
+    ],
+  },
+  great_tit: {
+    en: "Great tit",
+    es: "Carbonero común",
+    moodEn: "SHARP INSISTENCE",
+    moodEs: "INSISTENCIA AGUDA",
+    intentEn: "BRANCH COORDINATION",
+    intentEs: "COORDINACIÓN DE RAMA",
+    translationsEn: [
+      "Everyone needs to know I am here. Several times.",
+      "Message repeated for the slow mammals in the sector.",
+      "I have important information. Mostly that I exist.",
+    ],
+    translationsEs: [
+      "Todo el mundo debe saber que estoy aquí. Varias veces.",
+      "Mensaje repetido para los mamíferos lentos del sector.",
+      "Tengo una información importante. Sobre todo que existo.",
+    ],
+  },
+  blue_tit: {
+    en: "Blue tit",
+    es: "Herrerillo común",
+    moodEn: "BRIGHT AGITATION",
+    moodEs: "AGITACIÓN LUMINOSA",
+    intentEn: "MICRO-BRANCH INSPECTION",
+    intentEs: "INSPECCIÓN DE MICRO-RAMAS",
+    translationsEn: [
+      "I am checking eight things at once and none of them concern you.",
+      "The world is too slow. I am accelerating locally.",
+      "Small size, large logistics.",
+    ],
+    translationsEs: [
+      "Compruebo ocho cosas a la vez y ninguna te concierne.",
+      "El mundo es demasiado lento. Acelero localmente.",
+      "Tamaño pequeño, gran logística.",
+    ],
+  },
+  chaffinch: {
+    en: "Common chaffinch",
+    es: "Pinzón vulgar",
+    moodEn: "METHODICAL OPTIMISM",
+    moodEs: "OPTIMISMO METÓDICO",
+    intentEn: "SPRING DECLARATION",
+    intentEs: "DECLARACIÓN DE PRIMAVERA",
+    translationsEn: [
+      "The morning protocol has begun. Please follow the rhythm.",
+      "I announce the weather, love and my approximate position.",
+      "Repetition number twelve: still impeccable.",
+    ],
+    translationsEs: [
+      "El protocolo de la mañana ha empezado. Sigue el ritmo, por favor.",
+      "Anuncio el tiempo, el amor y mi posición aproximada.",
+      "Repetición número doce: aún impecable.",
+    ],
+  },
+  wren: {
+    en: "Eurasian wren",
+    es: "Chochín común",
+    moodEn: "MINIATURE INTENSITY",
+    moodEs: "INTENSIDAD MINIATURA",
+    intentEn: "AMPLIFYING A TINY PRESENCE",
+    intentEs: "AMPLIFICACIÓN DE UNA PRESENCIA MINÚSCULA",
+    translationsEn: [
+      "I am tiny, so I use the maximum legal volume.",
+      "The moss is mine. The trunk too. We will discuss the rest.",
+      "Never underestimate a ball of nerves with a beak.",
+    ],
+    translationsEs: [
+      "Soy minúsculo, así que uso el volumen máximo reglamentario.",
+      "El musgo es mío. El tronco también. Ya veremos el resto.",
+      "Nunca subestimes una bola de nervios con pico.",
+    ],
+  },
+  jay: {
+    en: "Eurasian jay",
+    es: "Arrendajo euroasiático",
+    moodEn: "THEATRICAL ALARM",
+    moodEs: "ALARMA TEATRAL",
+    intentEn: "OAK SURVEILLANCE",
+    intentEs: "VIGILANCIA DE ROBLES",
+    translationsEn: [
+      "Intruder reported. Possibly dangerous. Possibly just badly groomed.",
+      "I am transmitting the information to the higher oaks.",
+      "Acorns are counted. Humans too.",
+    ],
+    translationsEs: [
+      "Intruso señalado. Quizá peligroso. Quizá solo mal peinado.",
+      "Transmito la información a los robles superiores.",
+      "Las bellotas están contadas. Los humanos también.",
+    ],
+  },
+  magpie: {
+    en: "Eurasian magpie",
+    es: "Urraca común",
+    moodEn: "STRATEGIC CHATTER",
+    moodEs: "CHARLA ESTRATÉGICA",
+    intentEn: "SHINY OBJECT INVENTORY",
+    intentEs: "INVENTARIO DE OBJETOS BRILLANTES",
+    translationsEn: [
+      "I stole nothing. I am reorganizing the light.",
+      "Shiny object detected. Diplomatic approach considered.",
+      "Conversation in progress with myself. I am winning.",
+    ],
+    translationsEs: [
+      "No he robado nada. Estoy reorganizando la luz.",
+      "Objeto brillante detectado. Se contempla un enfoque diplomático.",
+      "Conversación en curso conmigo misma. Voy ganando.",
+    ],
+  },
+  carrion_crow: {
+    en: "Carrion crow",
+    es: "Corneja negra",
+    moodEn: "CORVID AUTHORITY",
+    moodEs: "AUTORIDAD CÓRVIDA",
+    intentEn: "BIPED ASSESSMENT",
+    intentEs: "EVALUACIÓN DEL BÍPEDO",
+    translationsEn: [
+      "The biped is tolerated. For now.",
+      "This sector is under black administration.",
+      "I am consulting the council. Do not move too much.",
+    ],
+    translationsEs: [
+      "El bípedo queda tolerado. Por ahora.",
+      "Este sector está bajo administración negra.",
+      "Consulto al consejo. No se muevan demasiado.",
+    ],
+  },
+  wood_pigeon: {
+    en: "Common wood pigeon",
+    es: "Paloma torcaz",
+    moodEn: "PLUMP GRAVITY",
+    moodEs: "GRAVEDAD RELLENITA",
+    intentEn: "COMFORTABLE BRANCH ANNOUNCEMENT",
+    intentEs: "ANUNCIO DE RAMA CÓMODA",
+    translationsEn: [
+      "This branch accepts my weight with dignity.",
+      "I repeat a simple sentence because it is perfect.",
+      "Peace means cooing louder than the problems.",
+    ],
+    translationsEs: [
+      "Esta rama acepta mi peso con dignidad.",
+      "Repito una frase sencilla porque es perfecta.",
+      "La paz consiste en arrullar más fuerte que los problemas.",
+    ],
+  },
+  green_woodpecker: {
+    en: "European green woodpecker",
+    es: "Pito real europeo",
+    moodEn: "UNDERGROWTH LAUGHTER",
+    moodEs: "RISA DE SOTOBOSQUE",
+    intentEn: "ANT PROSPECTION",
+    intentEs: "PROSPECCIÓN DE HORMIGAS",
+    translationsEn: [
+      "I laugh because the lawn knows things.",
+      "Ants probable. Dignity optional.",
+      "The trunk confirms it: edible secrets are present.",
+    ],
+    translationsEs: [
+      "Me río porque el césped sabe cosas.",
+      "Hormigas probables. Dignidad opcional.",
+      "El tronco confirma: hay secretos comestibles.",
+    ],
+  },
+  great_spotted_woodpecker: {
+    en: "Great spotted woodpecker",
+    es: "Pico picapinos",
+    moodEn: "TERRITORIAL PERCUSSION",
+    moodEs: "PERCUSIÓN TERRITORIAL",
+    intentEn: "TRUNK RESONANCE TEST",
+    intentEs: "PRUEBA DE RESONANCIA DEL TRONCO",
+    translationsEn: [
+      "The wood answers. The conversation is satisfying.",
+      "I drum to check the architecture of the world.",
+      "Vertical signal confirmed in trunk number three.",
+    ],
+    translationsEs: [
+      "La madera responde. La conversación es satisfactoria.",
+      "Golpeo para comprobar la arquitectura del mundo.",
+      "Señal vertical confirmada en el tronco número tres.",
+    ],
+  },
+};
+
 function bird(
   id: string,
   name: string,
@@ -9,10 +239,11 @@ function bird(
   intent: string,
   translations: string[],
 ): Species {
+  const copy = FOREST_COPY[id];
   return {
     id,
     name,
-    scientificName: { en: fr, fr, es: fr },
+    scientificName: { en: copy?.en || fr, fr, es: copy?.es || fr },
     emoji: "🐦",
     personality: {
       en: ["WOODLAND", "ALERT", "FIELD LOG"],
@@ -20,21 +251,21 @@ function bird(
       es: ["FORESTAL", "ALERTA", "REGISTRO"],
     },
     emotionalStates: {
-      en: [mood, "TERRITORIAL SIGNAL", "DISCREET OBSERVATION"],
+      en: [copy?.moodEn || mood, "TERRITORIAL SIGNAL", "DISCREET OBSERVATION"],
       fr: [mood, "SIGNAL TERRITORIAL", "OBSERVATION DISCRÈTE"],
-      es: [mood, "SEÑAL TERRITORIAL", "OBSERVACIÓN DISCRETA"],
+      es: [copy?.moodEs || mood, "SEÑAL TERRITORIAL", "OBSERVACIÓN DISCRETA"],
     },
     threatLevels: ["MINIMAL", "LOW", "LOW", "MODERATE"],
-    translations: { en: translations, fr: translations, es: translations },
+    translations: { en: copy?.translationsEn || translations, fr: translations, es: copy?.translationsEs || translations },
     poetic: {
       en: ["The forest repeats my name until the light believes it."],
       fr: ["La forêt répète mon nom jusqu'à ce que la lumière y croie."],
       es: ["El bosque repite mi nombre hasta que la luz lo crea."],
     },
     biologicalIntents: {
-      en: [intent, "WOODLAND PERIMETER CHECK", "SOCIAL SIGNAL"],
+      en: [copy?.intentEn || intent, "WOODLAND PERIMETER CHECK", "SOCIAL SIGNAL"],
       fr: [intent, "CONTRÔLE DU PÉRIMÈTRE FORESTIER", "SIGNAL SOCIAL"],
-      es: [intent, "CONTROL DEL PERÍMETRO FORESTAL", "SEÑAL SOCIAL"],
+      es: [copy?.intentEs || intent, "CONTROL DEL PERÍMETRO FORESTAL", "SEÑAL SOCIAL"],
     },
     neuralPatterns: ["FOREST_ECHO", "BRANCH_SYNC", "TERRITORY_PULSE"],
     environmentalScans: {
