@@ -1,5 +1,181 @@
 import type { Species } from "./animals";
 
+type UrbanCopy = {
+  en: string;
+  es: string;
+  moodEn: string;
+  moodEs: string;
+  intentEn: string;
+  intentEs: string;
+  translationsEn: string[];
+  translationsEs: string[];
+};
+
+const URBAN_COPY: Record<string, UrbanCopy> = {
+  ring_necked_parakeet: {
+    en: "Ring-necked parakeet",
+    es: "Cotorra de Kramer",
+    moodEn: "LASER EXUBERANCE",
+    moodEs: "EXUBERANCIA LÁSER",
+    intentEn: "GREEN NEIGHBORHOOD DECLARATION",
+    intentEs: "DECLARACIÓN VERDE DE VECINDARIO",
+    translationsEn: [
+      "I cross the neighborhood like a tropical alarm on a mission.",
+      "The local sky lacks green. I am intervening.",
+      "Is this balcony edible, or merely insulting?",
+    ],
+    translationsEs: [
+      "Cruzo el barrio como una alarma tropical en misión.",
+      "Al cielo local le falta verde. Intervengo.",
+      "¿Este balcón es comestible o simplemente insultante?",
+    ],
+  },
+  nightingale: {
+    en: "Common nightingale",
+    es: "Ruiseñor común",
+    moodEn: "MELODIC DRAMA",
+    moodEs: "DRAMA MELÓDICO",
+    intentEn: "NOCTURNAL TERRITORIAL PERFORMANCE",
+    intentEs: "PERFORMANCE TERRITORIAL NOCTURNA",
+    translationsEn: [
+      "I rehearsed this phrase for three springs and nobody applauds.",
+      "The night understands better than you, but you may stay.",
+      "I turn an ordinary hedge into administrative opera.",
+    ],
+    translationsEs: [
+      "He ensayado esta frase durante tres primaveras y nadie aplaude.",
+      "La noche entiende mejor que tú, pero puedes quedarte.",
+      "Transformo un seto cualquiera en ópera administrativa.",
+    ],
+  },
+  house_sparrow: {
+    en: "House sparrow",
+    es: "Gorrión común",
+    moodEn: "GUTTER CHATTER",
+    moodEs: "CHARLA DE CANALÓN",
+    intentEn: "MICRO-FLOCK COORDINATION",
+    intentEs: "COORDINACIÓN DE MICRO-BANDADA",
+    translationsEn: [
+      "Facade meeting confirmed. Agenda item: crumbs.",
+      "The big building sometimes produces bread. We are monitoring it.",
+      "I am not shouting, I am contributing to urban sound planning.",
+    ],
+    translationsEs: [
+      "Reunión de fachada confirmada. Orden del día: migas.",
+      "El gran edificio a veces produce pan. Lo vigilamos.",
+      "No grito, participo en el urbanismo sonoro.",
+    ],
+  },
+  starling: {
+    en: "European starling",
+    es: "Estornino pinto",
+    moodEn: "METALLIC IMPROVISATION",
+    moodEs: "IMPROVISACIÓN METÁLICA",
+    intentEn: "NEIGHBORHOOD MIMICRY",
+    intentEs: "IMITACIÓN DEL BARRIO",
+    translationsEn: [
+      "I can copy three alarms, a gate and your lack of concentration.",
+      "Shiny meeting on the antenna. Human presence tolerated.",
+      "That noise? It may have been me. Or your machine. Productive mystery.",
+    ],
+    translationsEs: [
+      "Puedo copiar tres alarmas, una verja y tu falta de concentración.",
+      "Reunión brillante en la antena. Presencia humana tolerada.",
+      "¿Ese ruido? Tal vez fui yo. O tu máquina. Misterio productivo.",
+    ],
+  },
+  collared_dove: {
+    en: "Eurasian collared dove",
+    es: "Tórtola turca",
+    moodEn: "DIPLOMATIC COOING",
+    moodEs: "ARRULLO DIPLOMÁTICO",
+    intentEn: "ROOFTOP ANNOUNCEMENT",
+    intentEs: "ANUNCIO DE TEJADO",
+    translationsEn: [
+      "I repeat the same idea because it is excellent.",
+      "The roof is calm. I speak slowly.",
+      "Local peace requires three syllables and a lot of insistence.",
+    ],
+    translationsEs: [
+      "Repito la misma idea porque es excelente.",
+      "El tejado está tranquilo. Hablo despacio.",
+      "La paz local requiere tres sílabas y mucha insistencia.",
+    ],
+  },
+  black_redstart: {
+    en: "Black redstart",
+    es: "Colirrojo tizón",
+    moodEn: "CHARCOAL ON ANTENNA",
+    moodEs: "CARBÓN EN ANTENA",
+    intentEn: "WALL SURVEILLANCE",
+    intentEs: "VIGILANCIA DE MUROS",
+    translationsEn: [
+      "I sing from the zinc roof. It is more dramatic.",
+      "The wall has an opinion. I relay it precisely.",
+      "Small black bird, major rooftop security service.",
+    ],
+    translationsEs: [
+      "Canto desde el zinc. Es más dramático.",
+      "El muro tiene una opinión. La transmito con precisión.",
+      "Pájaro negro pequeño, gran servicio de seguridad de los tejados.",
+    ],
+  },
+  swift: {
+    en: "Common swift",
+    es: "Vencejo común",
+    moodEn: "CAPSLOCK SPEED",
+    moodEs: "VELOCIDAD EN MAYÚSCULAS",
+    intentEn: "AERIAL PATROL",
+    intentEs: "PATRULLA AÉREA",
+    translationsEn: [
+      "I do not land. Problems are on the ground.",
+      "Speed confirmed. Gravity will be handled later.",
+      "We cross the sky like a living notification.",
+    ],
+    translationsEs: [
+      "No aterrizo. Los problemas están en el suelo.",
+      "Velocidad confirmada. La gravedad se tratará más tarde.",
+      "Cruzamos el cielo como una notificación viva.",
+    ],
+  },
+  barn_swallow: {
+    en: "Barn swallow",
+    es: "Golondrina común",
+    moodEn: "TALKATIVE ACROBATICS",
+    moodEs: "ACROBACIA PARLANCHINA",
+    intentEn: "INSECT CARTOGRAPHY",
+    intentEs: "CARTOGRAFÍA DE INSECTOS",
+    translationsEn: [
+      "I draw roads in the air, please do not walk on them.",
+      "Insect intercepted. Choreography validated.",
+      "The sky is a seating chart and I know every place.",
+    ],
+    translationsEs: [
+      "Dibujo caminos en el aire, por favor no los pises.",
+      "Insecto interceptado. Coreografía validada.",
+      "El cielo es un plano de mesa y conozco todos los sitios.",
+    ],
+  },
+  kestrel: {
+    en: "Common kestrel",
+    es: "Cernícalo vulgar",
+    moodEn: "RAPTOR LASER",
+    moodEs: "LÁSER DE RAPAZ",
+    intentEn: "TARGET LOCK",
+    intentEs: "BLOQUEO DE OBJETIVO",
+    translationsEn: [
+      "I hover motionless. You are the one panicking with gravity.",
+      "Potential mouse calculated. Human classified as soft obstacle.",
+      "The sky has just put a cursor on something.",
+    ],
+    translationsEs: [
+      "Floto inmóvil. Eres tú quien entra en pánico con la gravedad.",
+      "Ratón potencial calculado. Humano clasificado como obstáculo blando.",
+      "El cielo acaba de poner un cursor sobre algo.",
+    ],
+  },
+};
+
 function urbanBird(
   id: string,
   name: string,
@@ -9,10 +185,11 @@ function urbanBird(
   intent: string,
   translations: string[],
 ): Species {
+  const copy = URBAN_COPY[id];
   return {
     id,
     name,
-    scientificName: { en: fr, fr, es: fr },
+    scientificName: { en: copy?.en || fr, fr, es: copy?.es || fr },
     emoji: "🐦",
     personality: {
       en: ["URBAN EDGE", "FAST SIGNAL", "WINDOWSIDE"],
@@ -20,21 +197,21 @@ function urbanBird(
       es: ["BORDE URBANO", "SEÑAL RÁPIDA", "VENTANA"],
     },
     emotionalStates: {
-      en: [mood, "NEIGHBORHOOD BROADCAST", "AERIAL COMMENTARY"],
+      en: [copy?.moodEn || mood, "NEIGHBORHOOD BROADCAST", "AERIAL COMMENTARY"],
       fr: [mood, "DIFFUSION DE QUARTIER", "COMMENTAIRE AÉRIEN"],
-      es: [mood, "DIFUSIÓN DE BARRIO", "COMENTARIO AÉREO"],
+      es: [copy?.moodEs || mood, "DIFUSIÓN DE BARRIO", "COMENTARIO AÉREO"],
     },
     threatLevels: ["MINIMAL", "LOW", "LOW", "MODERATE"],
-    translations: { en: translations, fr: translations, es: translations },
+    translations: { en: copy?.translationsEn || translations, fr: translations, es: copy?.translationsEs || translations },
     poetic: {
       en: ["The city has branches if you know where to listen."],
       fr: ["La ville a des branches, si l'on sait où écouter."],
       es: ["La ciudad tiene ramas si sabes escuchar."],
     },
     biologicalIntents: {
-      en: [intent, "WINDOWSIDE TERRITORY CHECK", "LOCAL SIGNALING"],
+      en: [copy?.intentEn || intent, "WINDOWSIDE TERRITORY CHECK", "LOCAL SIGNALING"],
       fr: [intent, "CONTRÔLE DU TERRITOIRE DE FENÊTRE", "SIGNAL LOCAL"],
-      es: [intent, "CONTROL DE TERRITORIO DE VENTANA", "SEÑAL LOCAL"],
+      es: [copy?.intentEs || intent, "CONTROL DE TERRITORIO DE VENTANA", "SEÑAL LOCAL"],
     },
     neuralPatterns: ["WINDOW_ECHO", "URBAN_CANOPY", "FAST_CALL_SYNC"],
     environmentalScans: {
