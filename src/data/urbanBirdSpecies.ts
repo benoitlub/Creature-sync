@@ -1,4 +1,5 @@
 import type { Species } from "./animals";
+import { EXTENDED_SPECIES } from "./extendedSpecies";
 
 type UrbanCopy = {
   en: string;
@@ -223,7 +224,7 @@ function urbanBird(
   };
 }
 
-export const URBAN_BIRD_SPECIES: Species[] = [
+const BASE_URBAN_BIRD_SPECIES: Species[] = [
   urbanBird("ring_necked_parakeet", "PSITTACULA KRAMERI", "Perruche à collier", {
     dominantFreqMin: 1800, dominantFreqMax: 7200,
     spectralCentroidMin: 2800, spectralCentroidMax: 9200,
@@ -350,4 +351,9 @@ export const URBAN_BIRD_SPECIES: Species[] = [
     "Souris potentielle calculée. Humain classé obstacle mou.",
     "Le ciel vient de mettre un curseur sur quelque chose.",
   ]),
+];
+
+export const URBAN_BIRD_SPECIES: Species[] = [
+  ...BASE_URBAN_BIRD_SPECIES,
+  ...EXTENDED_SPECIES,
 ];
