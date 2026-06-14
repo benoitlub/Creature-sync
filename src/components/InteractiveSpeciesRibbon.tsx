@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiveCandidate } from "../hooks/useAudioAnalysis";
+import { SPECIES } from "../data/animals";
+import { FOREST_SPECIES } from "../data/forestSpecies";
+import { URBAN_BIRD_SPECIES } from "../data/urbanBirdSpecies";
 import type { Lang } from "../data/translations";
 import mediaCache from "../data/speciesMedia.generated.json";
 import { SpeciesFeuchCard, type SpeciesCardItem } from "./SpeciesFeuchCard";
@@ -13,6 +16,7 @@ type MediaRow = {
 };
 
 const mediaRows: MediaRow[] = Array.isArray((mediaCache as any).rows) ? (mediaCache as any).rows : [];
+const allSpecies = [...SPECIES, ...FOREST_SPECIES, ...URBAN_BIRD_SPECIES];
 const MAX_VISIBLE_SPECIES = 5;
 
 const COPY: Record<Lang, { title: string; empty: string; hits: string; listen: string; stop: string }> = {
@@ -25,10 +29,33 @@ function normalize(value = "") {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function findAudioUrl(item: SpeciesCardItem) {
+function findSpecies(item: SpeciesCardItem) {
   const key = normalize(item.key);
-  const label = normalize(item.label);
   const latin = normalize(item.latin);
+  const label = normalize(item.label);
+  return allSpecies.find(species => {
+    const id = normalize(species.id);
+    const name = normalize(species.name);
+    const fr = normalize(species.scientificName?.fr || "");
+    const en = normalize(species.scientificName?.en || "");
+    const es = normalize(species.scientificName?.es || "");
+    return id === key || name === latin || name === key || fr === label || en === label || es === label;
+  }) || null;
+}
+
+function localizeItem(item: SeenSpecies, lang: Lang): SeenSpecies {
+  const species = findSpecies(item);
+  if (!species) return item;
+  const label = species.scientificName?.[lang] || species.scientificName?.fr || item.label;
+  const latin = species.name || item.latin;
+  return { ...item, label, latin, icon: getAnimalIcon(species.id, label, latin) };
+}
+
+function findAudioUrl(item: SpeciesCardItem) {
+  const localized = findSpecies(item);
+  const key = normalize(localized?.id || item.key);
+  const label = normalize(item.label);
+  const latin = normalize(localized?.name || item.latin);
   const row = mediaRows.find(row => {
     const rowId = normalize(row.animal_id);
     const rowLabel = normalize(row.label || "");
@@ -110,7 +137,8 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wasListening = useRef(false);
   const copy = COPY[lang];
-  const selected = seen.find(item => item.key === selectedKey) || null;
+  const localizedSeen = seen.map(item => localizeItem(item, lang));
+  const selected = localizedSeen.find(item => item.key === selectedKey) || null;
 
   useEffect(() => {
     if (state.isListening && !wasListening.current) {
@@ -170,11 +198,11 @@ export function InteractiveSpeciesRibbon({ state, candidates, lang }: { state: a
     <div className="rounded border px-3 py-2 backdrop-blur-sm" style={{ borderColor: "#00ff8840", background: "rgba(0,10,25,0.62)" }}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-[9px] font-mono tracking-[0.32em] uppercase text-green-300/75">{copy.title}</div>
-        <div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">{seen.length} taxa</div>
+        <div className="text-[8px] font-mono tracking-[0.22em] uppercase text-white/30">{localizedSeen.length} taxa</div>
       </div>
-      {seen.length === 0 ? <div className="text-[9px] font-mono text-gray-600 tracking-wider">{copy.empty}</div> : (
+      {localizedSeen.length === 0 ? <div className="text-[9px] font-mono text-gray-600 tracking-wider">{copy.empty}</div> : (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {seen.map(item => {
+          {localizedSeen.map(item => {
             const active = selectedKey === item.key;
             const audioUrl = findAudioUrl(item);
             const isPlaying = playingKey === item.key;
