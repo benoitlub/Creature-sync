@@ -1,6 +1,6 @@
 {
   "name": "creature-sync",
-  "version": "0.2.0",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "collect:media": "node scripts/collectCreatureMedia.mjs"
+    "collect:media": "node scripts/collectCreatureMedia.mjs",
+    "sync:notion": "node scripts/syncNotionCreatureSpecies.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
