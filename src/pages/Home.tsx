@@ -20,7 +20,7 @@ import {
   type SessionJournalEntry,
 } from "../utils/sessionJournal";
 
-const VERSION_LABEL = "V3.2 · OCTOPUS / CREDIBILITY / WEB AUDIO";
+const VERSION_LABEL = "V3.3 · NOTION SOURCE / OCTOPUS / WEB AUDIO";
 
 const DASHBOARD_COPY: Record<Lang, {
   bio: string;
