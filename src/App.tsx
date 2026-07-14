@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
 import { DayNightToggle } from "@/components/DayNightToggle";
+import { OctopusObservationBridge } from "@/components/OctopusObservationBridge";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function App() {
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <DayNightToggle />
       <Router />
+      <OctopusObservationBridge />
     </WouterRouter>
   );
 }

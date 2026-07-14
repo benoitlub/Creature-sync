@@ -1,4 +1,8 @@
 import { type AnalysisState } from "../data/animals";
+import {
+  CREATURE_OBSERVATION_EVENT,
+  type CreatureObservationEvent,
+} from "../integrations/octopus/contracts";
 
 export type JournalMetrics = {
   dominantFreq?: number;
@@ -40,6 +44,24 @@ function safeParse(raw: string | null): SessionJournalEntry[] {
 
 function storageAvailable() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+function emitObservation(entry: SessionJournalEntry) {
+  if (typeof window === "undefined") return;
+
+  const observation: CreatureObservationEvent = {
+    id: entry.id,
+    timestamp: entry.createdAt,
+    location: entry.locationNote || entry.habitat || undefined,
+    source: "audio",
+    species: entry.speciesName || undefined,
+    category: entry.speciesName ? "animal" : "unknown",
+    confidence: entry.confidence,
+    rawLabel: entry.speciesName || "Signature inconnue",
+    context: entry.translation,
+  };
+
+  window.dispatchEvent(new CustomEvent(CREATURE_OBSERVATION_EVENT, { detail: observation }));
 }
 
 export function getSessionJournal(): SessionJournalEntry[] {
@@ -89,6 +111,7 @@ export function saveSessionEntry(entry: SessionJournalEntry) {
   const entries = getSessionJournal();
   const next = [entry, ...entries.filter((item) => item.id !== entry.id)].slice(0, MAX_FREE_ENTRIES);
   persistSessionJournal(next);
+  emitObservation(entry);
   return next;
 }
 
