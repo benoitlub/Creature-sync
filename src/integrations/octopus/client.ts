@@ -75,6 +75,50 @@ function normalizeInsights(payload: unknown): OctopusInsight[] {
   });
 }
 
+function extractMessage(payload: unknown): string {
+  const source = asRecord(payload);
+  const output = asRecord(source.output);
+  return String(
+    source.message
+    || source.summary
+    || output.message
+    || output.summary
+    || "",
+  ).trim();
+}
+
+function isWaitingForCompatibleExecutor(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("compatible executor")
+    || normalized.includes("waiting for an executor")
+    || normalized.includes("aucun exécuteur compatible");
+}
+
+function buildLocalFallback(observation: CreatureObservationEvent): OctopusObservationResponse {
+  const quality = observation.metrics?.signalQuality;
+  const weakSignal = typeof quality === "number" && quality < 55;
+  const confidence = observation.confidence;
+  const lowConfidence = typeof confidence === "number" && confidence < 70;
+
+  const reason = weakSignal
+    ? "La qualité du signal est trop faible pour enrichir cette observation de façon fiable."
+    : lowConfidence
+      ? "L’identification reste prudente : une nouvelle captation permettrait de mieux la vérifier."
+      : "Aucun exécuteur compatible n’est disponible ; la détection brute reste inchangée.";
+
+  return {
+    observationId: observation.id,
+    status: "completed",
+    summary: "Analyse locale Creature-Sync · Octopus a bien enregistré l’observation mais aucun exécuteur compatible n’était disponible.",
+    insights: [{
+      type: "request_recapture",
+      reason,
+      durationSeconds: 15,
+      guidance: "Enregistre à nouveau en te rapprochant légèrement de la source et en évitant les bruits parasites.",
+    }],
+  };
+}
+
 export async function sendObservationToOctopus(
   observation: CreatureObservationEvent,
 ): Promise<OctopusObservationResponse | null> {
@@ -119,18 +163,26 @@ export async function sendObservationToOctopus(
       signal: controller.signal,
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) return buildLocalFallback(observation);
+
     const raw = await response.json() as unknown;
     const source = asRecord(raw);
+    const message = extractMessage(raw);
+    const insights = normalizeInsights(raw);
+
+    if (isWaitingForCompatibleExecutor(message) || insights.length === 0) {
+      return buildLocalFallback(observation);
+    }
+
     return {
       observationId: observation.id,
       status: normalizeStatus(source.status),
       summary: typeof source.summary === "string" ? source.summary : undefined,
-      insights: normalizeInsights(raw),
+      insights,
       raw,
     };
   } catch {
-    return null;
+    return buildLocalFallback(observation);
   } finally {
     window.clearTimeout(timeout);
   }
