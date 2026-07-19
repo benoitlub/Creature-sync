@@ -5,28 +5,79 @@ import type {
   CreatureSyncOctopusConfig,
 } from "./types";
 
-const DEFAULT_TIMEOUT_MS = 2500;
+const DEFAULT_TIMEOUT_MS = 6000;
+const DEFAULT_OCTOPUS_API = "https://octopus-engine.onrender.com";
 
-function fallbackVoice(observation: CreatureObservation) {
-  const creature = observation.species || "Créature observatrice";
-  if (observation.category === "aircraft") {
-    return {
-      creature,
-      text: "Les grands oiseaux de métal traversent encore le ciel. Ils ne nichent jamais, mais les humains lèvent toujours la tête.",
-    };
-  }
-  return {
-    creature,
-    text: observation.context.trim() || `J’ai remarqué ${observation.rawLabel.toLowerCase()} près d’ici.`,
-  };
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
-function extractText(output: unknown): string | null {
-  if (!output || typeof output !== "object" || Array.isArray(output)) return null;
-  const value = output as Record<string, unknown>;
-  if (typeof value.text === "string" && value.text.trim()) return value.text.trim();
-  if (typeof value.content === "string" && value.content.trim()) return value.content.trim();
-  return null;
+function normalizeActions(payload: unknown): CreatureObservationAction[] {
+  const source = asRecord(payload);
+  const output = asRecord(source.output);
+  const candidates = Array.isArray(source.insights)
+    ? source.insights
+    : Array.isArray(output.insights)
+      ? output.insights
+      : Array.isArray(source.actions)
+        ? source.actions
+        : [];
+
+  return candidates.flatMap((item): CreatureObservationAction[] => {
+    const record = asRecord(item);
+    const type = String(record.type || "");
+    if (type === "hypothesis") return [{
+      type,
+      label: String(record.label || record.species || "Hypothèse à vérifier"),
+      confidence: typeof record.confidence === "number" ? record.confidence : undefined,
+      reason: typeof record.reason === "string" ? record.reason : undefined,
+    }];
+    if (type === "request_recapture") return [{
+      type,
+      reason: String(record.reason || "Signal insuffisant"),
+      durationSeconds: typeof record.durationSeconds === "number" ? record.durationSeconds : 15,
+      guidance: typeof record.guidance === "string" ? record.guidance : undefined,
+    }];
+    if (type === "notify_user") return [{
+      type,
+      title: String(record.title || "Observation enrichie"),
+      message: String(record.message || "Octopus a examiné cette observation."),
+    }];
+    if (type === "ignore") return [{ type, reason: typeof record.reason === "string" ? record.reason : undefined }];
+    return [];
+  });
+}
+
+function extractSummary(payload: unknown): string | undefined {
+  const source = asRecord(payload);
+  const output = asRecord(source.output);
+  const value = source.summary || source.message || output.summary || output.message;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function localFallback(observation: CreatureObservation): CreatureObservationResult {
+  const quality = observation.metrics?.signalQuality;
+  const weakSignal = typeof quality === "number" && quality < 55;
+  const lowConfidence = typeof observation.confidence === "number" && observation.confidence < 70;
+  const reason = weakSignal
+    ? "La qualité du signal est trop faible pour enrichir cette observation de façon fiable."
+    : lowConfidence
+      ? "L’identification reste prudente : une nouvelle captation permettrait de mieux la vérifier."
+      : "Aucun exécuteur compatible n’est disponible ; la détection brute reste inchangée.";
+
+  return {
+    observationId: observation.id,
+    summary: "Analyse locale Creature Sync : aucun retour exploitable d’Octopus.",
+    actions: [{
+      type: "request_recapture",
+      reason,
+      durationSeconds: 15,
+      guidance: "Enregistre à nouveau en te rapprochant légèrement de la source et en évitant les bruits parasites.",
+    }],
+    octopus: { status: "failed", source: "local" },
+  };
 }
 
 export class CreatureSyncOctopusAdapter {
@@ -36,73 +87,71 @@ export class CreatureSyncOctopusAdapter {
   ) {}
 
   async handle(observation: CreatureObservation): Promise<CreatureObservationResult> {
-    const fallback = fallbackVoice(observation);
-    let voice = fallback;
-    let status: CreatureObservationResult["octopus"]["status"] = "disabled";
-    let latencyMs: number | undefined;
-
-    if (this.config.enabled && this.config.endpoint) {
-      const startedAt = performance.now();
-      const controller = new AbortController();
-      const timeoutId = globalThis.setTimeout(
-        () => controller.abort(),
-        this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      );
-
-      try {
-        const response = await this.fetchImpl(`${this.config.endpoint.replace(/\/$/, "")}/mission`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            operationId: `creature_${observation.id}`,
-            title: `Donner une voix à ${observation.species || observation.rawLabel}`,
-            objective: "Produire une phrase brève, poétique et ancrée dans l’observation, dite par l’animal lui-même.",
-            context: {
-              id: `creature-sync:${observation.id}`,
-              label: observation.species || observation.rawLabel,
-              objective: observation.context,
-              metadata: { source: "creature-sync", observation },
-            },
-            requiredCapabilities: ["narrative.generate"],
-            authorizedResources: ["mistral"],
-            prompt: [
-              "Tu écris une seule phrase en français, 30 mots maximum.",
-              `La voix est celle de : ${observation.species || "un animal témoin"}.`,
-              `Observation : ${observation.rawLabel}.`,
-              `Contexte : ${observation.context || "aucun détail supplémentaire"}.`,
-              `Lieu : ${observation.location || "non précisé"}.`,
-              "Ne donne aucune explication et ne mets pas de guillemets.",
-            ].join("\n"),
-          }),
-        });
-
-        if (!response.ok) throw new Error(`Octopus mission failed (${response.status})`);
-        const mission = await response.json() as Record<string, unknown>;
-        const generated = extractText(mission.output);
-        if (mission.status === "completed" && generated) {
-          voice = { creature: observation.species || fallback.creature, text: generated };
-          status = "completed";
-        } else {
-          status = "failed";
-        }
-      } catch {
-        status = "failed";
-      } finally {
-        latencyMs = Math.round(performance.now() - startedAt);
-        globalThis.clearTimeout(timeoutId);
-      }
+    if (!this.config.enabled) {
+      return {
+        observationId: observation.id,
+        summary: "Adaptateur Octopus désactivé.",
+        actions: [],
+        octopus: { status: "disabled", source: "disabled" },
+      };
     }
 
-    const actions: CreatureObservationAction[] = [
-      { type: "speak_as_creature", ...voice },
-      {
-        type: "save_to_notion",
-        database: "Creature-Sync observations",
-        payload: { observation, voice, source: "creature-sync" },
-      },
-    ];
+    const startedAt = performance.now();
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    const endpoint = (this.config.endpoint || DEFAULT_OCTOPUS_API).replace(/\/$/, "");
 
-    return { observationId: observation.id, actions, octopus: { status, latencyMs } };
+    try {
+      const response = await this.fetchImpl(`${endpoint}/mission`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          operationId: `creature_sync_${observation.id}`,
+          title: `Creature Sync · ${observation.rawLabel}`,
+          objective: "Examiner une observation acoustique neutre sans altérer la détection source.",
+          parcelId: "project-creature-sync",
+          context: {
+            id: "project-creature-sync",
+            label: "Creature Sync",
+            objective: "Enrichir des observations animales et environnementales.",
+            metadata: {
+              owner: "creature-sync",
+              adapter: "creature-sync-octopus-v3",
+              event: "observation.detected",
+              observation,
+            },
+          },
+          requiredCapabilities: ["observation.analyze"],
+          authorizationPolicy: { internalWork: "allowed", externalAction: "forbidden" },
+          authorizedResources: [],
+          prompt: [
+            "Analyse uniquement les données fournies.",
+            "Ne présente jamais une hypothèse comme une identification certaine.",
+            "Tu peux proposer une hypothèse, demander une nouvelle captation ou signaler une incohérence.",
+            "Ne modifie pas la détection brute de Creature Sync.",
+            `Observation: ${JSON.stringify(observation)}`,
+            "Format préféré: { insights: [{ type: hypothesis|request_recapture|notify_user|ignore, ... }] }",
+          ].join("\n"),
+        }),
+      });
+
+      if (!response.ok) return { ...localFallback(observation), octopus: { status: "failed", source: "local", latencyMs: Math.round(performance.now() - startedAt) } };
+
+      const raw = await response.json() as unknown;
+      const actions = normalizeActions(raw);
+      if (actions.length === 0) return { ...localFallback(observation), octopus: { status: "failed", source: "local", latencyMs: Math.round(performance.now() - startedAt) } };
+
+      return {
+        observationId: observation.id,
+        summary: extractSummary(raw),
+        actions,
+        octopus: { status: "completed", source: "remote", latencyMs: Math.round(performance.now() - startedAt) },
+      };
+    } catch {
+      return { ...localFallback(observation), octopus: { status: "failed", source: "local", latencyMs: Math.round(performance.now() - startedAt) } };
+    } finally {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
 }
