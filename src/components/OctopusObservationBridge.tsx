@@ -3,7 +3,7 @@ import {
   CREATURE_OBSERVATION_EVENT,
   OCTOPUS_ACTION_EVENT,
   type CreatureObservationEvent,
-  type OctopusAction,
+  type OctopusInsight,
 } from "../integrations/octopus/contracts";
 import {
   isOctopusBridgeEnabled,
@@ -12,11 +12,12 @@ import {
 
 type BridgeState = {
   status: "idle" | "sending" | "offline" | "done";
-  action: OctopusAction | null;
+  insight: OctopusInsight | null;
+  summary?: string;
 };
 
 export function OctopusObservationBridge() {
-  const [state, setState] = useState<BridgeState>({ status: "idle", action: null });
+  const [state, setState] = useState<BridgeState>({ status: "idle", insight: null });
 
   useEffect(() => {
     const handleObservation = async (event: Event) => {
@@ -24,17 +25,22 @@ export function OctopusObservationBridge() {
       if (!observation) return;
 
       if (!isOctopusBridgeEnabled()) {
-        setState({ status: "offline", action: null });
+        setState({ status: "offline", insight: null });
         return;
       }
 
-      setState({ status: "sending", action: null });
+      setState({ status: "sending", insight: null });
       const response = await sendObservationToOctopus(observation);
-      const action = response?.actions?.find((item) => item.type === "speak_as_creature")
-        ?? response?.actions?.find((item) => item.type === "notify_user")
+      const insight = response?.insights.find((item) => item.type === "request_recapture")
+        ?? response?.insights.find((item) => item.type === "hypothesis")
+        ?? response?.insights.find((item) => item.type === "notify_user")
         ?? null;
 
-      setState({ status: response ? "done" : "offline", action });
+      setState({
+        status: response ? "done" : "offline",
+        insight,
+        summary: response?.summary,
+      });
       if (response) {
         window.dispatchEvent(new CustomEvent(OCTOPUS_ACTION_EVENT, { detail: response }));
       }
@@ -46,13 +52,17 @@ export function OctopusObservationBridge() {
 
   if (state.status === "idle") return null;
 
-  const text = state.action?.type === "speak_as_creature"
-    ? `${state.action.creature} : « ${state.action.text} »`
-    : state.action?.type === "notify_user"
-      ? `${state.action.title} — ${state.action.message}`
-      : state.status === "sending"
-        ? "Octopus examine l’observation…"
-        : "Observation conservée localement · Octopus indisponible";
+  const text = state.insight?.type === "hypothesis"
+    ? `Hypothèse à vérifier : ${state.insight.label}${typeof state.insight.confidence === "number" ? ` · ${Math.round(state.insight.confidence)} %` : ""}`
+    : state.insight?.type === "request_recapture"
+      ? `Nouvelle captation conseillée : ${state.insight.reason}${state.insight.guidance ? ` · ${state.insight.guidance}` : ""}`
+      : state.insight?.type === "notify_user"
+        ? `${state.insight.title} — ${state.insight.message}`
+        : state.status === "sending"
+          ? "Octopus examine les mesures de l’observation…"
+          : state.status === "offline"
+            ? "Observation conservée localement · Octopus indisponible"
+            : state.summary || "Observation reçue · aucune correction nécessaire";
 
   return (
     <aside
@@ -65,7 +75,7 @@ export function OctopusObservationBridge() {
         boxShadow: "0 0 20px rgba(0,212,255,0.12)",
       }}
     >
-      <span className="mr-2 text-cyan-400/60">OCTOPUS</span>
+      <span className="mr-2 text-cyan-400/60">OCTOPUS · INFLUX</span>
       {text}
     </aside>
   );
