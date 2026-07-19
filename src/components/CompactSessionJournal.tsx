@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { clearSessionJournal, deleteSessionEntry, getSessionJournal, type SessionJournalEntry } from "../utils/sessionJournal";
 
 const APP_URL = "https://benoitlub.github.io/Creature-sync/";
-const DONATE_URL = ["https://www.paypal.com/cgi-bin/webscr?cmd=_donations", "business=benoitlubert@gmail.com", "currency_code=EUR", "item_name=Support+Creature-sync"].join("&");
+const PREMIUM_URL = `${APP_URL}premium.html`;
 
 function formatDate(value: string) {
   try { return new Date(value).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }); } catch { return value; }
@@ -59,12 +59,12 @@ export function CompactSessionJournal({ latestEntry }: { latestEntry: SessionJou
     }
   }
 
-  function donate() { window.open(DONATE_URL, "_blank", "noopener,noreferrer"); }
+  function openPremium() { window.open(PREMIUM_URL, "_blank", "noopener,noreferrer"); }
 
   async function copyCall() {
     try {
-      await navigator.clipboard.writeText(`Soutenir Creature-sync : ${APP_URL}\nDon : benoitlubert@gmail.com`);
-      setStatus("Appel copié.");
+      await navigator.clipboard.writeText(`Feuch Institute Premium — 4,20 € / mois\n${PREMIUM_URL}`);
+      setStatus("Lien Premium copié.");
     } catch { setStatus("Copie impossible."); }
   }
 
@@ -82,16 +82,11 @@ export function CompactSessionJournal({ latestEntry }: { latestEntry: SessionJou
   }
 
   return (
-    <div className="rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.62)" }}>
+    <div className="order-20 rounded border p-2 backdrop-blur-sm" style={{ borderColor: "#00d4ff22", background: "rgba(0,10,25,0.62)" }}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[9px] font-mono tracking-[0.32em] uppercase text-cyan-400/80">Journal / partage</div>
           <div className="truncate text-[8px] font-mono tracking-wider text-gray-500">{entries.length} trace{entries.length > 1 ? "s" : ""}{selected ? ` // ${iconFor(selected.speciesName)} ${selected.speciesName}` : ""}</div>
-        </div>
-        <div className="grid grid-cols-3 gap-1 shrink-0">
-          <button type="button" onClick={share} className="rounded border px-2 py-1 text-[8px] font-mono uppercase tracking-wider text-cyan-300" style={{ borderColor: "rgba(0,212,255,0.30)", background: "rgba(0,212,255,0.06)" }}>Partager</button>
-          <button type="button" onClick={donate} className="rounded border px-2 py-1 text-[8px] font-mono uppercase tracking-wider text-orange-300" style={{ borderColor: "rgba(255,140,0,0.32)", background: "rgba(255,140,0,0.08)" }}>Don</button>
-          <button type="button" onClick={copyCall} className="rounded border px-2 py-1 text-[8px] font-mono uppercase tracking-wider text-green-300" style={{ borderColor: "rgba(0,255,136,0.26)", background: "rgba(0,255,136,0.06)" }}>Copier</button>
         </div>
       </div>
       {status && <div className="pt-1 text-[8px] font-mono text-green-300/70 tracking-wider">{status}</div>}
@@ -120,6 +115,12 @@ export function CompactSessionJournal({ latestEntry }: { latestEntry: SessionJou
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-3 gap-1">
+        <button type="button" onClick={share} className="rounded border px-2 py-1.5 text-[8px] font-mono uppercase tracking-wider text-cyan-300" style={{ borderColor: "rgba(0,212,255,0.30)", background: "rgba(0,212,255,0.06)" }}>Partager</button>
+        <button type="button" onClick={openPremium} className="rounded border px-2 py-1.5 text-[8px] font-mono uppercase tracking-wider text-orange-300" style={{ borderColor: "rgba(255,140,0,0.32)", background: "rgba(255,140,0,0.08)" }}>Premium 4,20 €</button>
+        <button type="button" onClick={copyCall} className="rounded border px-2 py-1.5 text-[8px] font-mono uppercase tracking-wider text-green-300" style={{ borderColor: "rgba(0,255,136,0.26)", background: "rgba(0,255,136,0.06)" }}>Copier</button>
       </div>
     </div>
   );
