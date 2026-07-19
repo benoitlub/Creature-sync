@@ -18,6 +18,7 @@ type BridgeState = {
 
 export function OctopusObservationBridge() {
   const [state, setState] = useState<BridgeState>({ status: "idle", insight: null });
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const handleObservation = async (event: Event) => {
@@ -67,7 +68,7 @@ export function OctopusObservationBridge() {
   return (
     <aside
       aria-live="polite"
-      className="fixed left-3 right-3 bottom-3 z-40 mx-auto max-w-xl rounded-lg border px-3 py-2 text-[10px] font-mono tracking-wide backdrop-blur-md"
+      className="fixed left-3 right-3 top-[5.6rem] z-40 mx-auto max-w-xl rounded-lg border px-3 py-2 text-[10px] font-mono tracking-wide backdrop-blur-md"
       style={{
         borderColor: state.status === "offline" ? "#ff8c0044" : "#00d4ff44",
         background: "rgba(2, 8, 20, 0.92)",
@@ -75,8 +76,16 @@ export function OctopusObservationBridge() {
         boxShadow: "0 0 20px rgba(0,212,255,0.12)",
       }}
     >
-      <span className="mr-2 text-cyan-400/60">OCTOPUS · INFLUX</span>
-      {text}
+      <button
+        type="button"
+        onClick={() => setExpanded(value => !value)}
+        className="flex w-full items-center gap-2 text-left"
+        aria-expanded={expanded}
+      >
+        <span className="shrink-0 text-cyan-400/60">OCTOPUS · INFLUX</span>
+        <span className={expanded ? "" : "truncate"}>{text}</span>
+        <span className="ml-auto shrink-0 text-cyan-300/50">{expanded ? "−" : "+"}</span>
+      </button>
     </aside>
   );
 }
