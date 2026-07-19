@@ -55,10 +55,13 @@ function emitObservation(entry: SessionJournalEntry) {
     location: entry.locationNote || entry.habitat || undefined,
     source: "audio",
     species: entry.speciesName || undefined,
-    category: entry.speciesName ? "animal" : "unknown",
+    scientificName: entry.speciesLatin || undefined,
+    category: entry.speciesName && entry.speciesName !== "Signature inconnue" ? "animal" : "unknown",
     confidence: entry.confidence,
     rawLabel: entry.speciesName || "Signature inconnue",
     context: entry.translation,
+    habitat: entry.habitat,
+    metrics: { ...entry.metrics },
   };
 
   window.dispatchEvent(new CustomEvent(CREATURE_OBSERVATION_EVENT, { detail: observation }));
