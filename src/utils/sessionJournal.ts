@@ -29,8 +29,18 @@ export type SessionJournalEntry = {
   metrics: JournalMetrics;
 };
 
+type LastOctopusObservation = {
+  key: string;
+  sentAt: number;
+  confidence: number;
+};
+
 const JOURNAL_KEY = "creature-sync-session-journal-v1";
+const OCTOPUS_LAST_OBSERVATION_KEY = "creature-sync-octopus-last-observation-v1";
 const MAX_FREE_ENTRIES = 50;
+const MIN_OCTOPUS_CONFIDENCE = 70;
+const OCTOPUS_DUPLICATE_WINDOW_MS = 30 * 60 * 1000;
+const OCTOPUS_CONFIDENCE_UPGRADE = 10;
 
 function safeParse(raw: string | null): SessionJournalEntry[] {
   if (!raw) return [];
@@ -46,8 +56,49 @@ function storageAvailable() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
 }
 
+function normalizeObservationKey(entry: SessionJournalEntry) {
+  const species = (entry.speciesLatin || entry.speciesName || "unknown").trim().toLowerCase();
+  const habitat = (entry.locationNote || entry.habitat || "unknown").trim().toLowerCase();
+  return `${species}::${habitat}`;
+}
+
+function getLastOctopusObservation(): LastOctopusObservation | null {
+  if (!storageAvailable()) return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(OCTOPUS_LAST_OBSERVATION_KEY) || "null");
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.key !== "string" || typeof parsed.sentAt !== "number" || typeof parsed.confidence !== "number") return null;
+    return parsed as LastOctopusObservation;
+  } catch {
+    return null;
+  }
+}
+
+function shouldSendToOctopus(entry: SessionJournalEntry) {
+  const knownSpecies = Boolean(entry.speciesName && entry.speciesName !== "Signature inconnue");
+  if (!knownSpecies || entry.confidence < MIN_OCTOPUS_CONFIDENCE) return false;
+
+  const key = normalizeObservationKey(entry);
+  const previous = getLastOctopusObservation();
+  if (!previous || previous.key !== key) return true;
+
+  const recentDuplicate = Date.now() - previous.sentAt < OCTOPUS_DUPLICATE_WINDOW_MS;
+  const meaningfulUpgrade = entry.confidence >= previous.confidence + OCTOPUS_CONFIDENCE_UPGRADE;
+  return !recentDuplicate || meaningfulUpgrade;
+}
+
+function rememberOctopusObservation(entry: SessionJournalEntry) {
+  if (!storageAvailable()) return;
+  const value: LastOctopusObservation = {
+    key: normalizeObservationKey(entry),
+    sentAt: Date.now(),
+    confidence: entry.confidence,
+  };
+  window.localStorage.setItem(OCTOPUS_LAST_OBSERVATION_KEY, JSON.stringify(value));
+}
+
 function emitObservation(entry: SessionJournalEntry) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !shouldSendToOctopus(entry)) return;
 
   const observation: CreatureObservationEvent = {
     id: entry.id,
@@ -56,14 +107,15 @@ function emitObservation(entry: SessionJournalEntry) {
     source: "audio",
     species: entry.speciesName || undefined,
     scientificName: entry.speciesLatin || undefined,
-    category: entry.speciesName && entry.speciesName !== "Signature inconnue" ? "animal" : "unknown",
+    category: "animal",
     confidence: entry.confidence,
-    rawLabel: entry.speciesName || "Signature inconnue",
+    rawLabel: entry.speciesName,
     context: entry.translation,
     habitat: entry.habitat,
     metrics: { ...entry.metrics },
   };
 
+  rememberOctopusObservation(entry);
   window.dispatchEvent(new CustomEvent(CREATURE_OBSERVATION_EVENT, { detail: observation }));
 }
 
