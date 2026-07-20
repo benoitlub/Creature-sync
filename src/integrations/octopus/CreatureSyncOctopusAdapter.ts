@@ -6,7 +6,6 @@ import type {
 } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 6000;
-const DEFAULT_OCTOPUS_API = "https://octopus-engine.onrender.com";
 const ACCEPTED_STATUSES = new Set(["completed", "queued", "running", "accepted", "ok", "success"]);
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -27,7 +26,7 @@ function localFallback(observation: CreatureObservation, detail?: string): Creat
 
   return {
     observationId: observation.id,
-    summary: detail ? `Octopus indisponible · ${detail}` : "Mode local Creature Sync : aucun accusé de réception d’Octopus.",
+    summary: detail ? `Mode local · ${detail}` : "Mode local Creature Sync.",
     actions: [{
       type: "request_recapture",
       reason,
@@ -87,10 +86,12 @@ export class CreatureSyncOctopusAdapter {
       };
     }
 
+    const endpoint = String(this.config.endpoint || "").replace(/\/$/, "");
+    if (!endpoint) return localFallback(observation, "aucun serveur Octopus configuré");
+
     const startedAt = performance.now();
     const controller = new AbortController();
     const timeoutId = globalThis.setTimeout(() => controller.abort(), this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-    const endpoint = (this.config.endpoint || DEFAULT_OCTOPUS_API).replace(/\/$/, "");
 
     try {
       const response = await this.fetchImpl(`${endpoint}/mission`, {
@@ -99,19 +100,15 @@ export class CreatureSyncOctopusAdapter {
         signal: controller.signal,
         body: JSON.stringify({
           operationId: `observation_${observation.id}`,
-          title: "Receive external observation",
-          objective: "Receive and deduplicate one stabilized external observation.",
+          title: "Receive and deduplicate one stabilized external observation.",
+          objective: "Preserve only this supplied observation and return memory relations when useful.",
           context: {
             id: `observation:${observation.id}`,
             label: "Stabilized external observation",
             objective: "Preserve only this supplied observation and return memory relations when useful.",
             metadata: {
               source: "external-application",
-              ingestionPolicy: {
-                stabilizedOnly: true,
-                deduplicate: true,
-                noFollowUpMission: true,
-              },
+              ingestionPolicy: { stabilizedOnly: true, deduplicate: true, noFollowUpMission: true },
               event: {
                 occurredAt: observation.timestamp,
                 modality: observation.source,
