@@ -11,6 +11,7 @@ import {
 import { FOREST_SPECIES } from "../data/forestSpecies";
 import { URBAN_BIRD_SPECIES } from "../data/urbanBirdSpecies";
 import { getEvolvingTranslation } from "../data/phraseBanks";
+import { requestOctopusTranslation } from "../integrations/octopus/requestTranslation";
 
 const EXTRA_SPECIES = [...FOREST_SPECIES, ...URBAN_BIRD_SPECIES];
 const ALL_SPECIES = uniqueSpecies([...SPECIES, ...EXTRA_SPECIES]);
@@ -391,6 +392,10 @@ export function useAudioAnalysis() {
   const crypticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accumulatedFeaturesRef = useRef<AudioFeatures[]>([]);
   const candidateMemoryRef = useRef<CandidateFrame[]>([]);
+  // Jeton de lecture : incrémenté à chaque nouveau scan (ou remise à zéro).
+  // Une réponse tardive d'Octopus qui ne porte plus le jeton courant est
+  // ignorée, pour ne jamais écraser une traduction plus récente.
+  const readingTokenRef = useRef(0);
 
   const generateFakeWaveform = useCallback((intensity: number) => Array.from({ length: 64 }, (_, i) => {
     const base = Math.sin(i * 0.3 + Date.now() * 0.002) * 0.3;
@@ -483,10 +488,20 @@ export function useAudioAnalysis() {
     }
     const candidates = memoryCandidates.length ? memoryCandidates : getLiveSpeciesCandidates(finalFeatures, lang);
     const confidence = candidates[0]?.confidence ?? scoreToConfidence(best.score, finalFeatures, best.suspect);
-    saveHabit(best.species, inferHabitat(finalFeatures));
+    const habitat = inferHabitat(finalFeatures);
+    saveHabit(best.species, habitat);
     setLiveCandidates(candidates);
     setDetectedLabel(null);
+    // La traduction locale s'affiche immédiatement : l'appel Octopus qui suit
+    // n'est qu'une amélioration progressive et ne retarde jamais l'affichage.
     setState(s => ({ ...s, ...buildReading(best, finalFeatures, true, best.suspect ? Math.min(confidence, 68) : confidence), isListening: false, isAnalyzing: false, scanProgress: 100 }));
+    const token = readingTokenRef.current;
+    void requestOctopusTranslation(best.species, lang, habitat, best.suspect).then(text => {
+      if (!text) return;
+      // Scan relancé entre-temps : cette réponse est périmée, on la jette.
+      if (readingTokenRef.current !== token) return;
+      setState(s => (s.isComplete && s.species?.id === best.species.id ? { ...s, translation: text } : s));
+    });
   }, [buildReading, lang]);
 
   const startListening = useCallback(async () => {
@@ -496,6 +511,7 @@ export function useAudioAnalysis() {
     if (crypticTimerRef.current) clearTimeout(crypticTimerRef.current);
     accumulatedFeaturesRef.current = [];
     candidateMemoryRef.current = [];
+    readingTokenRef.current += 1;
     setState({ ...INITIAL_STATE, isListening: true, scanProgress: 0 });
     setWaveformData(Array(64).fill(0));
     setSpectrogramData([]);
@@ -569,6 +585,7 @@ export function useAudioAnalysis() {
     analyserRef.current = null;
     accumulatedFeaturesRef.current = [];
     candidateMemoryRef.current = [];
+    readingTokenRef.current += 1;
     setWaveformData(Array(64).fill(0));
     setSpectrogramData([]);
     setAudioFeatures(null);
