@@ -35,6 +35,16 @@ const SPECIES = [
   ["swift", "Martinet noir", "Apus apus"],
   ["barn_swallow", "Hirondelle rustique", "Hirundo rustica"],
   ["kestrel", "Faucon crecerelle", "Falco tinnunculus"],
+  ["dunnock", "Accenteur mouchet", "Prunella modularis"],
+  ["song_thrush", "Grive musicienne", "Turdus philomelos"],
+  ["tawny_owl", "Chouette hulotte", "Strix aluco"],
+  ["eurasian_nuthatch", "Sittelle torchepot", "Sitta europaea"],
+  ["short_toed_treecreeper", "Grimpereau des jardins", "Certhia brachydactyla"],
+  ["white_wagtail", "Bergeronnette grise", "Motacilla alba"],
+  ["blackcap", "Fauvette a tete noire", "Sylvia atricapilla"],
+  ["red_fox", "Renard roux", "Vulpes vulpes"],
+  ["beech_marten", "Fouine", "Martes foina"],
+  ["hedgehog", "Herisson commun", "Erinaceus europaeus"],
 ];
 
 function stripHtml(value = "") {
