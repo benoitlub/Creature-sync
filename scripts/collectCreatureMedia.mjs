@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 const OUT = "src/data/speciesMedia.generated.json";
@@ -35,6 +35,16 @@ const SPECIES = [
   ["swift", "Martinet noir", "Apus apus"],
   ["barn_swallow", "Hirondelle rustique", "Hirundo rustica"],
   ["kestrel", "Faucon crecerelle", "Falco tinnunculus"],
+  ["dunnock", "Accenteur mouchet", "Prunella modularis"],
+  ["song_thrush", "Grive musicienne", "Turdus philomelos"],
+  ["tawny_owl", "Chouette hulotte", "Strix aluco"],
+  ["eurasian_nuthatch", "Sittelle torchepot", "Sitta europaea"],
+  ["short_toed_treecreeper", "Grimpereau des jardins", "Certhia brachydactyla"],
+  ["white_wagtail", "Bergeronnette grise", "Motacilla alba"],
+  ["blackcap", "Fauvette a tete noire", "Sylvia atricapilla"],
+  ["red_fox", "Renard roux", "Vulpes vulpes"],
+  ["beech_marten", "Fouine", "Martes foina"],
+  ["hedgehog", "Herisson commun", "Erinaceus europaeus"],
 ];
 
 function stripHtml(value = "") {
@@ -120,21 +130,61 @@ async function findXenoAudio(latin, animalId) {
   };
 }
 
+async function readPreviousRows() {
+  try {
+    const previous = JSON.parse(await readFile(OUT, "utf8"));
+    return new Map((previous?.rows || []).map(row => [row.animal_id, row]));
+  } catch {
+    return new Map();
+  }
+}
+
+// A run that loses the network answers 403 on every call and would otherwise
+// replace every collected row with null. Keep whatever the previous file knew
+// for the species that failed this time, so a bad run can only ever add.
+function mergeWithPrevious(row, previous) {
+  if (!previous) return row;
+  const reusedPhoto = !row.photo && Boolean(previous.photo);
+  const reusedAudio = !row.audio && Boolean(previous.audio);
+  if (reusedPhoto) row.photo = previous.photo;
+  if (reusedAudio) row.audio = previous.audio;
+  if (reusedPhoto) row.photo_reused = true;
+  if (reusedAudio) row.audio_reused = true;
+  // Only a row left untouched by this run keeps a hand-set validated flag.
+  if (reusedPhoto && reusedAudio) row.validated = Boolean(previous.validated);
+  return row;
+}
+
 async function collect() {
+  const previousRows = await readPreviousRows();
   const rows = [];
+  let freshPhotos = 0;
+  let freshAudio = 0;
+  let downloaded = 0;
   for (const [animalId, label, latin] of SPECIES) {
     const row = { animal_id: animalId, label, latin, photo: null, audio: null, validated: false };
     try { row.photo = await findCommonsImage(latin, label); } catch (err) { row.photo_error = String(err.message || err); }
     if (!/(felis|canis|strigiformes)/i.test(latin)) {
       try { row.audio = await findXenoAudio(latin, animalId); } catch (err) { row.audio_error = String(err.message || err); }
     }
-    rows.push(row);
-    console.log(`${animalId}: photo=${Boolean(row.photo)} audio=${Boolean(row.audio)}`);
+    if (row.photo) freshPhotos += 1;
+    if (row.audio) freshAudio += 1;
+    if (row.audio?.url?.startsWith("media/audio/")) downloaded += 1;
+    rows.push(mergeWithPrevious(row, previousRows.get(animalId)));
+    const mark = key => `${Boolean(row[key])}${row[`${key}_reused`] ? " (conserve)" : ""}`;
+    console.log(`${animalId}: photo=${mark("photo")} audio=${mark("audio")}`);
+  }
+  console.log(`Collected ${freshPhotos} photo(s) and ${freshAudio} audio result(s) for ${SPECIES.length} species`);
+  if (freshPhotos === 0 && freshAudio === 0) {
+    const errors = rows.map(row => row.photo_error || row.audio_error).filter(Boolean);
+    console.error(`Every lookup failed (first error: ${errors[0] || "unknown"}).`);
+    console.error(`Refusing to write ${OUT} — check network access to commons.wikimedia.org and xeno-canto.org, then run again.`);
+    process.exit(1);
   }
   await mkdir("src/data", { recursive: true });
   await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 2));
   console.log(`Wrote ${OUT}`);
-  console.log(`Downloaded MP3 files into ${AUDIO_DIR}`);
+  console.log(`Downloaded ${downloaded} MP3 file(s) into ${AUDIO_DIR}`);
 }
 
 collect().catch(err => {
