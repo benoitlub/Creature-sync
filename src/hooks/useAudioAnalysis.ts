@@ -500,7 +500,11 @@ export function useAudioAnalysis() {
       if (!text) return;
       // Scan relancé entre-temps : cette réponse est périmée, on la jette.
       if (readingTokenRef.current !== token) return;
-      setState(s => (s.isComplete && s.species?.id === best.species.id ? { ...s, translation: text } : s));
+      // isPoetic doit repartir à false : la ligne demandée à Octopus est
+      // sarcastique, alors que le tirage local peut avoir été poétique (~16 %).
+      // Sans ce reset, la carte garderait le libellé « poésie », l'italique
+      // violet et les guillemets autour d'une phrase qui n'en est pas une.
+      setState(s => (s.isComplete && s.species?.id === best.species.id ? { ...s, translation: text, isPoetic: false } : s));
     });
   }, [buildReading, lang]);
 

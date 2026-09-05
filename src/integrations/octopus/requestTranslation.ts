@@ -1,38 +1,79 @@
 import type { Species } from "../../data/animals";
 import type { Lang } from "../../data/translations";
 
-// Octopus renvoie toujours le texte brut de Mistral dans output.text — jamais
-// un objet déjà structuré. Mistral entoure parfois sa réponse de balises
-// ```json — on gère les deux cas (même correctif que 420-dice-game-reboot,
-// où ce même piège avait cassé le lien avec Octopus).
-function extractText(payload: unknown): string {
-  const source = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
-  const output = source.output && typeof source.output === "object" ? source.output as Record<string, unknown> : {};
-  const raw = typeof output.text === "string" ? output.text : "";
-  if (!raw.trim()) return "";
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (parsed && typeof parsed === "object" && typeof (parsed as Record<string, unknown>).text === "string") {
-      return String((parsed as Record<string, unknown>).text).trim();
-    }
-  } catch {
-    // Pas du JSON : Mistral a répondu directement en texte libre, on le garde tel quel.
-  }
-  return cleaned;
-}
+// Reprend la configuration de l'adaptateur (voir ./index.ts) : même drapeau
+// d'activation, même endpoint, même délai. Sans endpoint configuré on ne tente
+// rien — la traduction locale déjà affichée reste en place.
+const enabledFlag = import.meta.env.VITE_OCTOPUS_ADAPTER_ENABLED;
+const ENABLED = enabledFlag !== "false" && enabledFlag !== "0";
+const ENDPOINT = String(
+  import.meta.env.VITE_OCTOPUS_ADAPTER_ENDPOINT || import.meta.env.VITE_OCTOPUS_API_URL || "",
+).replace(/\/$/, "");
+const configuredTimeout = Number(import.meta.env.VITE_OCTOPUS_ADAPTER_TIMEOUT_MS);
+const TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 6000;
 
-const OCTOPUS_API = String(import.meta.env.VITE_OCTOPUS_API_URL || "https://octopus-engine-app.benoitlubert.workers.dev").replace(/\/$/, "");
-const TIMEOUT_MS = 6000;
+// Même vocabulaire que CreatureSyncOctopusAdapter : un statut hors de cette
+// liste (« failed » quand aucun exécuteur ne porte la capacité, par exemple)
+// arrive en HTTP 200 avec un message d'erreur dans output.text. Sans ce
+// contrôle, ce message d'erreur s'afficherait comme la phrase de l'animal.
+const ACCEPTED_STATUSES = new Set(["completed", "queued", "running", "accepted", "ok", "success"]);
+
+// Les lignes locales de phraseBanks.ts font au plus ~80 caractères et la carte
+// les affiche à la machine à écrire (45 ms/caractère). Au-delà de cette borne,
+// Mistral a ignoré la consigne « une seule phrase » : on garde le texte local.
+const MAX_LENGTH = 200;
 
 const LANG_NAMES: Record<Lang, string> = { fr: "français", en: "English", es: "español" };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+// Octopus renvoie toujours le texte brut de Mistral dans output.text — jamais
+// un objet déjà structuré. Mistral entoure parfois sa réponse de balises
+// ```json (même piège que sur 420-dice-game-reboot). Toute forme qu'on ne sait
+// pas lire renvoie "" : mieux vaut conserver la ligne locale qu'afficher du
+// JSON brut à l'utilisateur.
+function extractText(payload: unknown): string {
+  const raw = asRecord(asRecord(payload).output).text;
+  if (typeof raw !== "string" || !raw.trim()) return "";
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+
+  let candidate = cleaned;
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (typeof parsed === "string") {
+      candidate = parsed;
+    } else {
+      // Objet ou tableau : seule la forme { text } est contractuelle. Toute
+      // autre clé serait rendue telle quelle, accolades comprises.
+      const value = asRecord(parsed).text;
+      if (typeof value !== "string") return "";
+      candidate = value;
+    }
+  } catch {
+    // Pas du JSON : Mistral a répondu en texte libre, on le garde tel quel.
+  }
+
+  return normalize(candidate);
+}
+
+// La carte de traduction est une ligne unique : on aplatit les retours à la
+// ligne et on retire les guillemets que Mistral ajoute parfois malgré la consigne.
+function normalize(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim().replace(/^["“«\s]+|["”»\s]+$/g, "").trim();
+  return flat.length > MAX_LENGTH ? "" : flat;
+}
 
 /**
  * Demande à Octopus (via sa capacité générique content.social.write, portée
  * par Mistral) une ligne de traduction sarcastique inédite pour cette espèce,
  * plutôt que de piocher dans la liste fixe de phraseBanks.ts. Ne bloque
  * jamais l'affichage : à utiliser en amélioration progressive après avoir
- * déjà montré la traduction locale.
+ * déjà montré la traduction locale. Renvoie null dès que le moindre doute
+ * existe — l'appelant conserve alors le texte local.
  */
 export async function requestOctopusTranslation(
   species: Species,
@@ -40,13 +81,15 @@ export async function requestOctopusTranslation(
   habitat: string,
   suspect: boolean,
 ): Promise<string | null> {
+  if (!ENABLED || !ENDPOINT) return null;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${OCTOPUS_API}/mission`, {
+    const response = await fetch(`${ENDPOINT}/mission`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
         operationId: `creature_sync_translation_${Date.now()}`,
@@ -64,15 +107,19 @@ export async function requestOctopusTranslation(
           `Espèce : ${species.scientificName?.[lang] || species.name || species.id}`,
           `Habitat détecté : ${habitat || "non précisé"}`,
           suspect ? "Confiance faible : reste ambigu et un peu méfiant dans le ton." : "Confiance normale.",
-          `Réponds uniquement en ${LANG_NAMES[lang]}, une seule phrase, sans guillemets ni préambule.`,
+          `Réponds uniquement en ${LANG_NAMES[lang]}, une seule phrase de moins de 200 caractères, sans guillemets ni préambule.`,
           "N'invente aucun fait biologique précis sur l'espèce (pas de nom scientifique, pas de statistique) : reste dans le registre de l'humour, pas de la fiche technique.",
         ].join("\n"),
       }),
     });
 
     if (!response.ok) return null;
-    const text = extractText(await response.json());
-    return text || null;
+
+    const payload = await response.json() as unknown;
+    const status = String(asRecord(payload).status || asRecord(asRecord(payload).output).status || "").trim().toLowerCase();
+    if (status && !ACCEPTED_STATUSES.has(status)) return null;
+
+    return extractText(payload) || null;
   } catch {
     return null;
   } finally {
