@@ -11,7 +11,7 @@ export {
   getWeightedSpecies,
 } from "./translations";
 
-export type { AnalysisState, AudioFeatures };
+export type { Lang, AnalysisState, AudioFeatures };
 export type AnimalId = "crow" | "pigeon" | "duck" | "cat" | "dog" | "owl";
 export type Animal = {
   id: AnimalId;
@@ -202,9 +202,16 @@ export const ANIMALS: Animal[] = [
   },
 ];
 
-export const SPECIES = ANIMALS.map((animal) => ({
+const BASE_SPECIES = ANIMALS.map((animal) => ({
   ...animal,
   ...ANIMAL_TEXTS[animal.id],
 }));
 
-export type Species = (typeof SPECIES)[number];
+// AnimalId reste ferme : il indexe ANIMAL_TEXTS, qui doit couvrir les six
+// animaux de base. Mais les registres etendus (forestSpecies, urbanBirdSpecies,
+// extendedSpecies) enregistrent leurs propres ids, donc l'id d'une Species est
+// une chaine libre — sinon toute comparaison a "magpie" ou "red_fox" est vue
+// comme impossible par TypeScript alors qu'elle est vraie a l'execution.
+export type Species = Omit<(typeof BASE_SPECIES)[number], "id"> & { id: string };
+
+export const SPECIES: Species[] = BASE_SPECIES;
