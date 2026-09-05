@@ -1,0 +1,22 @@
+# Dépendances
+node_modules/
+
+# Sortie de build — reconstruite par .github/workflows/deploy.yml
+dist/
+
+# Lockfile : le workflow de déploiement utilise `npm install` et le dépôt
+# n'a jamais suivi de lockfile. À retirer d'ici si l'on décide de le
+# committer, en passant alors la CI à `npm ci`.
+package-lock.json
+
+# Variables d'environnement locales (VITE_OCTOPUS_*)
+.env
+.env.*
+!.env.example
+
+# Divers systèmes et éditeurs
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
