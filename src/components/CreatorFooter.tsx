@@ -1,5 +1,6 @@
 const CONTACT_EMAIL = "benoitlubert@gmail.com";
 const BLACKLACE_URL = "https://benoitlub.github.io/blacklace-echo/";
+const KOFI_URL = "https://ko-fi.com/feuchinstitut";
 const CREATURE_SYNC_URL = "https://benoitlub.github.io/Creature-sync/";
 
 export function CreatorFooter() {
@@ -28,6 +29,7 @@ export function CreatorFooter() {
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 pt-1">
+        <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" className="rounded border px-2 py-1 text-[9px] font-mono tracking-wider uppercase text-amber-200 hover:opacity-80" style={{ borderColor: "#ff8c0066", background: "rgba(255,140,0,0.12)" }}>☕ Soutenir sur Ko-fi</a>
         <a
           href={BLACKLACE_URL}
           target="_blank"
